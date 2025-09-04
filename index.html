@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shinobi's Vow: Cycle of the Lone Shadow</title>
+    <link rel="stylesheet" href="style.css">
+        <style>
+        .inventory-item {
+            padding: 10px;
+            margin-bottom: 8px;
+            background-color: var(--bg-medium);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+        }
+        .inventory-item-header {
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            color: var(--text-highlight);
+        }
+        .inventory-item-desc {
+            font-size: 0.9em;
+            color: var(--text-secondary);
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <!-- ... (rest of the body is unchanged) ... -->
+        <header id="game-header">
+            <h1>Shinobi's Vow: Cycle of the Lone Shadow</h1>
+            <p id="game-subtitle">A Longform Roguelite Text RPG</p>
+            <div id="character-main-status-bar">
+                <div class="main-status-item">Rank: <span id="header-char-rank">Child</span></div>
+                <div class="main-status-item">Status: <span id="header-char-status">Normal</span></div>
+                <div class="main-status-item activity">Activity: <span id="header-char-activity">Idle</span></div>
+            </div>
+        </header>
+
+        <div id="game-controls">
+            <div class="game-time-display">
+                <p>Date: <span id="current-game-date">[01/01/00]</span> <span id="current-game-time">[00:00]</span></p>
+                <p>Speed: <span id="current-time-scale">1x</span></p>
+            </div>
+            <div class="time-buttons">
+                <button id="pauseResumeButton" class="game-button time-control-button">Pause</button>
+                <button class="game-button time-control-button" data-speed="1">1x</button>
+                <button class="game-button time-control-button" data-speed="5">5x</button>
+                <button class="game-button time-control-button" data-speed="25">25x</button>
+                <button class="game-button time-control-button" data-speed="100">100x</button>
+                <button class="game-button time-control-button" data-speed="500">500x</button>
+                <button class="game-button time-control-button" data-speed="2500">2500x</button>
+            </div>
+        </div>
+
+        <aside id="character-status">
+            <h2>Your Shinobi</h2>
+            <div class="status-group">
+                <p><strong>Name:</strong> <span id="char-name">Initializing...</span></p>
+                <p><strong>Age:</strong> <span id="char-age">0</span> years</p>
+                <p><strong>Village:</strong> <span id="char-village">Unknown</span></p>
+                <p><strong>Rank:</strong> <span id="char-rank">Child</span></p>
+            </div>
+            <h3>Attributes</h3>
+            <div class="status-group attributes">
+                <p>Strength: <span id="stat-strength">0.0</span></p>
+                <p>Agility: <span id="stat-agility">0.0</span></p>
+                <p>Stamina: <span id="stat-stamina">0.0</span></p>
+                <p>Chakra Pool: <span id="stat-chakra-pool">0.0</span></p>
+                <p>Intellect: <span id="stat-intellect">0.0</span></p>
+                <p>Perception: <span id="stat-perception">0.0</span></p>
+                <p>Willpower: <span id="stat-willpower">0.0</span></p>
+            </div>
+            <h3>Vitals</h3>
+            <div class="status-group vitals">
+                <p>Health: <span id="char-health">100</span>/<span id="char-max-health">100</span></p>
+                <p>Chakra: <span id="char-chakra">100</span>/<span id="char-max-chakra">100</span></p>
+                <p>Stamina: <span id="char-stamina">100</span>/<span id="char-max-stamina">100</span></p>
+                <p>Morale: <span id="char-morale">100</span></p>
+            </div>
+            <h3>Conditions</h3>
+            <div id="char-conditions" class="status-group conditions-display">
+                <p>Normal</p>
+            </div>
+            <h3>Aptitudes</h3>
+            <div id="aptitudes-list" class="status-group aptitudes-display">
+                <p>None</p>
+            </div>
+            <h3>Character Details</h3>
+            <div class="status-group details">
+                <p><strong>Family Background:</strong> <span id="char-family-background">Unknown</span></p>
+                <p><strong>Chakra Affinity:</strong> <span id="char-affinity">None Detected</span></p>
+                <p><strong>Traits:</strong> <span id="char-traits">None</span></p>
+                <p><strong>Ryo:</strong> <span id="char-ryo">0</span></p> 
+            </div>
+             <!-- Team Roster Section -->
+            <h3>Team Roster</h3>
+            <div id="team-roster-section" class="status-group team-display" style="display: none;">
+                <p><strong>Sensei:</strong> <span id="team-sensei-name">N/A</span></p>
+                <p><strong>Teammate 1:</strong> <span id="team-mate1-name">N/A</span></p>
+                <p><strong>Teammate 2:</strong> <span id="team-mate2-name">N/A</span></p>
+            </div>
+            <div class="status-group meta-progress">
+                <h3>Legendary Echo</h3>
+                <p>Legend Points: <span id="legend-points">0</span></p>
+            </div>
+        </aside>
+
+        <section id="game-area">
+            <nav id="main-tabs">
+                <button class="tab-button active" data-tab="log-panel">Log</button>
+                <button class="tab-button" data-tab="skills-panel">Skills</button>
+                <button class="tab-button" data-tab="jutsu-panel">Jutsu</button>
+                <button class="tab-button" data-tab="inventory-panel">Inventory</button>
+            </nav>
+            <div id="log-panel" class="tab-content active">
+                <div id="narrative-log"></div>
+            </div>
+            <div id="skills-panel" class="tab-content"></div>
+            <div id="jutsu-panel" class="tab-content"></div>
+            <div id="inventory-panel" class="tab-content"></div>
+            <div id="action-buttons">
+                <button id="startGameButton" class="game-button">Start New Shinobi Life</button>
+            </div>
+        </section>
+    </div>
+
+    <!-- CORRECTED SCRIPT TAGS WITH type="module" -->
+    <script type="module" src="constants.js"></script>
+    <script type="module" src="skills.js"></script>
+    <script type="module" src="ui.js"></script>
+    <script type="module" src="inventory.js"></script> 
+    <script type="module" src="character.js"></script>
+    <script type="module" src="characterEffects.js"></script>
+    <script type="module" src="events.js"></script>
+    <script type="module" src="mission.js"></script>
+    <script type="module" src="combat.js"></script> 
+    <script type="module" src="game.js"></script>
+</body>
+</html>

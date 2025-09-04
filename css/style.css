@@ -1,0 +1,350 @@
+/* style.css - Shinobi's Vow - Functional & Professionalized UI */
+
+:root {
+    --bg-dark: #121212;
+    --bg-medium: #1f1f1f;
+    --bg-light: #2c2c2c;
+    --text-primary: #e0e0e0;
+    --text-secondary: #a0a0a0;
+    --text-highlight: #c9aa71;
+    --text-accent: #87ceeb;
+    --border-color: #383838;
+    --button-bg: #4a4a4a;
+    --button-hover-bg: #5c5c5c;
+    --button-active-bg: #3a3a3a;
+    --success-color: #76c7c0;
+    --failure-color: #ff6b6b;
+    --info-color: #6a9eff;
+    --warning-color: #ffd166;
+    --current-speed-color: #76c7c0;
+}
+
+/* Base Styles */
+body {
+    font-family: 'Segoe UI', 'Roboto', sans-serif;
+    background-color: var(--bg-dark);
+    color: var(--text-primary);
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+/* Game Container - The main layout grid */
+#game-container {
+    display: grid;
+    grid-template-areas:
+        "header header"
+        "controls controls"
+        "status main";
+    grid-template-columns: 320px 1fr;
+    grid-template-rows: auto auto 1fr;
+    gap: 25px;
+    width: 95%;
+    max-width: 1400px;
+    height: 96vh;
+    background-color: var(--bg-medium);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.7);
+    padding: 30px;
+    box-sizing: border-box;
+}
+
+/* Header */
+#game-header {
+    grid-area: header;
+    text-align: center;
+    padding-bottom: 15px; /* Adjusted padding */
+    border-bottom: 2px solid var(--border-color);
+}
+
+#game-header h1 {
+    color: var(--text-highlight);
+    margin: 0;
+    font-size: 2.8em;
+    letter-spacing: 1.5px;
+    text-shadow: 0 0 8px rgba(201, 170, 113, 0.4);
+}
+
+#game-header p {
+    color: var(--text-secondary);
+    font-size: 1em;
+    margin-top: 8px;
+    font-style: italic;
+    margin-bottom: 15px; /* Added margin */
+}
+
+/* Main Character Status Bar Styles */
+#character-main-status-bar {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 25px;
+    padding: 10px;
+    background-color: var(--bg-light);
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    font-size: 1.1em;
+}
+
+.main-status-item {
+    color: var(--text-secondary);
+}
+
+.main-status-item span {
+    color: var(--text-primary);
+    font-weight: bold;
+}
+
+.main-status-item.activity span {
+    color: var(--text-highlight);
+}
+
+/* Game Controls (Time & Speed) */
+#game-controls {
+    grid-area: controls;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--bg-light);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 15px 20px;
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.1);
+}
+
+.game-time-display {
+    display: flex;
+    gap: 30px;
+    font-size: 1.1em;
+    color: var(--text-accent);
+}
+
+.game-time-display p { margin: 0; display: flex; align-items: center; }
+.game-time-display span { font-weight: bold; margin-left: 8px; color: var(--text-primary); }
+
+.time-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    flex-shrink: 0;
+    max-width: 65%;
+}
+
+.time-control-button {
+    padding: 8px 15px;
+    font-size: 0.9em;
+    min-width: unset;
+    flex-basis: auto;
+    flex-grow: 0;
+}
+
+.time-control-button.active {
+    background-color: var(--current-speed-color);
+    color: var(--bg-dark);
+    box-shadow: 0 0 10px var(--current-speed-color);
+}
+
+/* Character Status Panel */
+#character-status {
+    grid-area: status;
+    background-color: var(--bg-light);
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    overflow-y: auto;
+    box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.2);
+    min-height: 0;
+}
+
+#character-status h2 {
+    color: var(--text-accent);
+    font-size: 1.6em;
+    text-align: center;
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+    letter-spacing: 0.8px;
+}
+
+#character-status h3 {
+    color: var(--text-accent);
+    font-size: 1.2em;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 8px;
+    margin-top: 25px;
+    margin-bottom: 15px;
+}
+
+.status-group {
+    margin-bottom: 20px;
+    padding: 10px 15px;
+    background-color: var(--bg-medium);
+    border-radius: 5px;
+    border: 1px solid rgba(var(--border-color), 0.5);
+}
+
+.status-group p {
+    margin: 8px 0;
+    font-size: 0.95em;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+.status-group strong {
+    color: var(--text-secondary);
+    font-weight: normal;
+    margin-right: 10px;
+    flex-shrink: 0; /* BUG FIX: Prevents the label from being squished */
+}
+
+.status-group p span {
+    font-weight: bold;
+    color: var(--text-primary);
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.conditions-display p {
+    font-weight: bold;
+}
+.condition-entry strong {
+    color: var(--text-primary); /* Use primary text color for the name */
+    font-weight: bold;
+}
+
+/* Color-coding for severity */
+.condition-entry.severity-minor span {
+    color: var(--text-secondary); /* Grey for minor issues */
+}
+.condition-entry.severity-severe span {
+    color: var(--warning-color); /* Yellow/Orange for severe issues */
+}
+.condition-entry.severity-permanent span {
+    color: var(--failure-color); /* Red for permanent, life-altering issues */
+}
+.condition-entry.severity-status span {
+    color: var(--info-color); /* Blue for temporary status effects */
+}
+
+.status-group.details p {
+    white-space: normal;
+    word-break: break-word;
+    align-items: flex-start;
+}
+
+/* Allow the value in the details section to wrap by not shrinking */
+.status-group.details p span {
+    flex-shrink: 1;
+    text-align: left; /* Looks better for wrapped text */
+}
+
+
+/* Main Game Area */
+#game-area {
+    grid-area: main;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--bg-light);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.2);
+    min-height: 0;
+}
+
+.aptitudes-display p {
+    color: var(--success-color); /* Use success color to highlight the bonus */
+}
+.aptitudes-display span {
+    font-weight: normal !important; /* The value isn't a stat, so it shouldn't be bold */
+}
+
+
+/* --- Tab System Styles --- */
+#main-tabs {
+    display: flex;
+    background-color: var(--bg-dark);
+    border-bottom: 2px solid var(--border-color);
+    padding: 0 10px;
+    flex-shrink: 0;
+}
+.tab-button { background-color: transparent; border: none; color: var(--text-secondary); padding: 15px 25px; font-size: 1.1em; font-weight: bold; cursor: pointer; transition: color 0.2s, background-color 0.2s; border-bottom: 3px solid transparent; }
+.tab-button:hover { background-color: var(--bg-light); color: var(--text-primary); }
+.tab-button.active { color: var(--text-accent); border-bottom: 3px solid var(--text-accent); }
+.tab-button.disabled { color: #555; cursor: not-allowed; border-bottom-color: transparent; }
+.tab-button.disabled:hover { background-color: transparent; color: #555; }
+.tab-content { display: none; flex-grow: 1; overflow-y: auto; min-height: 0; }
+.tab-content.active { display: flex; flex-direction: column; }
+#log-panel { padding: 0; }
+#narrative-log { flex-grow: 1; overflow-y: auto; background-color: var(--bg-medium); font-size: 1em; line-height: 1.7; word-wrap: break-word; padding: 20px; }
+.game-message { margin-bottom: 15px; padding-left: 15px; border-left: 3px solid var(--border-color); opacity: 0; transition: opacity 0.4s ease-out; }
+.game-message:last-child { border-left-color: var(--text-highlight); }
+.game-message .timestamp { color: var(--text-secondary); font-size: 0.85em; margin-right: 10px; font-style: italic; opacity: 0.8; }
+.system-message { color: var(--info-color); font-style: italic; border-left-color: var(--info-color); }
+.system-message.error { color: var(--failure-color); font-weight: bold; border-left-color: var(--failure-color); }
+.system-message.success { color: var(--success-color); font-weight: bold; border-left-color: var(--success-color); }
+.event-message { color: var(--warning-color); font-weight: bold; border-left-color: var(--warning-color); }
+.skill-gain-message { color: var(--success-color); font-size: 0.9em; border-left-color: var(--success-color); }
+.age-up-message { color: var(--text-accent); font-style: italic; border-left-color: var(--text-accent); }
+#skills-panel, #jutsu-panel { padding: 20px; }
+.skill-category { margin-bottom: 25px; }
+.skill-category h3 { color: var(--text-highlight); border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 15px; }
+.skill-entry, .jutsu-entry { margin-bottom: 12px; }
+.skill-entry-title, .jutsu-entry-title { display: flex; justify-content: space-between; font-size: 1em; margin-bottom: 5px; }
+.skill-name, .jutsu-name { font-weight: bold; }
+.skill-level, .jutsu-level { color: var(--text-secondary); }
+.progress-bar-container { width: 100%; background-color: var(--bg-dark); border-radius: 5px; height: 18px; border: 1px solid var(--border-color); overflow: hidden; }
+.progress-bar { background-color: var(--text-accent); height: 100%; width: 0%; border-radius: 4px; transition: width 0.3s ease-in-out; text-align: center; color: var(--bg-dark); font-size: 0.8em; line-height: 18px; font-weight: bold; }
+#action-buttons { padding: 20px; display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; background-color: var(--bg-light); border-top: 1px solid var(--border-color); flex-shrink: 0; }
+.game-button { background-color: var(--button-bg); color: var(--text-primary); border: none; padding: 14px 22px; border-radius: 8px; cursor: pointer; font-size: 1.05em; font-weight: bold; letter-spacing: 0.8px; transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s; min-width: 160px; text-align: center; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); }
+.game-button:hover { background-color: var(--button-hover-bg); transform: translateY(-2px); box-shadow: 0 5px 12px rgba(0, 0, 0, 0.4); }
+.game-button:active { background-color: var(--button-active-bg); transform: translateY(0); box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); }
+.game-button.active-focus { background-color: var(--text-accent); color: var(--bg-dark); border: 1px solid var(--text-primary); box-shadow: 0 0 15px rgba(135, 206, 235, 0.6); }
+.game-button.active-focus:hover { background-color: var(--text-accent); transform: translateY(-1px); box-shadow: 0 0 20px rgba(135, 206, 235, 0.8); }
+.game-button.secondary { background-color: var(--bg-medium); border: 1px solid var(--border-color); }
+.game-button.secondary:hover { background-color: var(--bg-light); border: 1px solid var(--text-accent); }
+
+/* CMI (Critical Moment Intervention) Styles */
+.cmi-timer {
+    width: 100%;
+    text-align: center;
+    font-size: 1.4em;
+    font-weight: bold;
+    color: var(--failure-color);
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 2px solid var(--failure-color);
+    border-radius: 8px;
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 5px var(--failure-color); }
+    50% { box-shadow: 0 0 20px var(--failure-color); }
+    100% { box-shadow: 0 0 5px var(--failure-color); }
+}
+
+.cmi-button {
+    background-color: var(--bg-dark);
+    border: 1px solid var(--text-accent);
+}
+
+.cmi-button:hover {
+    background-color: var(--text-accent);
+    color: var(--bg-dark);
+}
+
+
+/* Responsive Adjustments */
+@media (max-width: 1200px) { #game-container { grid-template-columns: 280px 1fr; gap: 20px; padding: 25px; } #game-header h1 { font-size: 2.5em; } .game-button { min-width: 140px; padding: 12px 18px; } .time-buttons { max-width: 100%; justify-content: center; } .time-control-button { flex-grow: 1; flex-basis: 0; } }
+@media (max-width: 992px) { #game-container { grid-template-columns: 1fr; grid-template-rows: auto auto auto 1fr; grid-template-areas: "header" "controls" "status" "main"; width: 100%; height: 100vh; margin: 0; padding: 15px; border-radius: 0; } #character-status { max-height: 35vh; margin-bottom: 0; } #game-area { min-height: 400px; } #action-buttons { justify-content: space-around; padding: 15px; } #game-header h1 { font-size: 2.2em; } #game-controls { flex-direction: column; gap: 15px; } .game-time-display { gap: 15px; flex-direction: column; align-items: center; } .time-buttons { width: 100%; justify-content: center; flex-wrap: wrap; } .time-control-button { flex-grow: 1; } }
+@media (max-width: 600px) { #game-container { padding: 15px; gap: 15px; } #game-header h1 { font-size: 1.8em; } body { font-size: 14px; } .game-button { min-width: unset; width: 100%; padding: 10px 15px; font-size: 0.9em; } #character-status h2 { font-size: 1.4em; } #character-status h3 { font-size: 1.1em; } .status-group p { font-size: 0.9em; } #character-main-status-bar { flex-direction: column; gap: 5px; font-size: 1em; } }
