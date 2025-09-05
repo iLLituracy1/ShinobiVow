@@ -1,21 +1,21 @@
-// npc_generation.js - Upgraded with Skill Level simulation
+// npc_generation.js
 
-import { JUTSU_LIBRARY, ELEMENTS } from './constants.js';
+import { JUTSU_LIBRARY, ELEMENTS, NPC_EQUIPMENT_LOADOUTS } from './constants.js';
 
 const RANK_TEMPLATES = {
     'Genin': {
         totalAttributesRange: [300, 400],
-        skillLevelRange: { main: [10, 20], secondary: [5, 10] }, // NEW
+        skillLevelRange: { main: [10, 20], secondary: [5, 10] },
         jutsuAllotment: { 'E-Rank': 'all', 'D-Rank Elemental': 2, 'D-Rank Generic': 1 }
     },
     'Chunin': {
         totalAttributesRange: [500, 700],
-        skillLevelRange: { main: [30, 45], secondary: [15, 25] }, // NEW
+        skillLevelRange: { main: [30, 45], secondary: [15, 25] },
         jutsuAllotment: { 'E-Rank': 'all', 'D-Rank Elemental': 'all', 'D-Rank Generic': 2, 'C-Rank Elemental': 2, 'C-Rank Generic': 1 }
     },
     'Jonin': {
         totalAttributesRange: [800, 1050],
-        skillLevelRange: { main: [50, 70], secondary: [30, 45] }, // NEW
+        skillLevelRange: { main: [50, 70], secondary: [30, 45] },
         jutsuAllotment: { 'E-Rank': 'all', 'D-Rank': 'all', 'C-Rank Elemental': 'all', 'C-Rank Generic': 2, 'B-Rank Elemental': 2, 'B-Rank Generic': 1 }
     }
 };
@@ -56,7 +56,6 @@ export function generateShinobi(rank, archetype) {
         shinobi.currentStats[stat] = parseFloat((baseStatValue * arch.statWeights[stat]).toFixed(1));
     }
 
-    // --- Generate Skill Levels ---
     shinobi.skillLevels = {};
     const mainSkillLvl = Math.floor(Math.random() * (template.skillLevelRange.main[1] - template.skillLevelRange.main[0]) + template.skillLevelRange.main[0]);
     const secondarySkillLvl = Math.floor(Math.random() * (template.skillLevelRange.secondary[1] - template.skillLevelRange.secondary[0]) + template.skillLevelRange.secondary[0]);
@@ -68,7 +67,6 @@ export function generateShinobi(rank, archetype) {
         shinobi.skillLevels.Taijutsu = secondarySkillLvl;
         shinobi.skillLevels.Ninjutsu = mainSkillLvl;
     }
-    // ---
 
     const primaryElement = arch.primaryElement === 'random' 
         ? ELEMENTS[Math.floor(Math.random() * ELEMENTS.length)] 
@@ -106,6 +104,17 @@ export function generateShinobi(rank, archetype) {
     if (allotment['B-Rank Generic']) addJutsuByCriteria('B', allotment['B-Rank Generic'], null, true);
     
     shinobi.knownJutsu = Array.from(shinobi.knownJutsu);
+
+    // *** Generate Equipment Inventory ***
+    shinobi.equipment = {};
+    const loadout = NPC_EQUIPMENT_LOADOUTS[rank];
+    if (loadout) {
+        for (const itemId in loadout) {
+            const [min, max] = loadout[itemId];
+            shinobi.equipment[itemId] = Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+    }
+    // *** END NEW BLOCK ***
 
     shinobi.name = `Rogue ${rank} (${archetype})`;
     shinobi.opponentType = `rogue_${rank.toLowerCase()}`;

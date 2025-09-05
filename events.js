@@ -12,8 +12,106 @@ import {
     ACADEMY_STUDY_EVENTS, JUTSU_LEARNING_EVENTS,
     GENIN_TAIJUTSU_EVENTS, GENIN_SHURIKENJUTSU_EVENTS, GENIN_CHAKRA_CONTROL_EVENTS,
     // Genin Narrative
-    TEAM_SPARRING_EVENTS, FORMATION_DRILL_EVENTS, BUILD_BONDS_EVENTS, ELEMENTAL_TRAINING_EVENTS, ADVANCED_JUTSU_RESEARCH_EVENTS
+    TEAM_SPARRING_EVENTS, FORMATION_DRILL_EVENTS, BUILD_BONDS_EVENTS, ELEMENTAL_TRAINING_EVENTS, ADVANCED_JUTSU_RESEARCH_EVENTS,
+    AFFINITY_DISCOVERY_CHANCE_PER_MINUTE, KEKKEI_GENKAI_DISCOVERY_CHANCE_PER_DAY, KEKKEI_GENKAI_AWAKENING_THRESHOLDS
 } from './constants.js';
+
+
+// --- NEW: Affinity Discovery Logic ---
+/**
+ * Checks if the character discovers their chakra affinity through training.
+ * @param {object} char - The character object.
+ * @param {number} gameMinutesPassed - The number of minutes passed this tick.
+ */
+function checkForAffinityDiscovery(char, gameMinutesPassed) {
+    if (char.affinityDiscovered) return;
+
+    // This check is specifically for the "Practice Chakra Control" directive
+    if (char.currentDirective?.skillName !== 'Practice Chakra Control') return;
+
+    const discoveryChance = AFFINITY_DISCOVERY_CHANCE_PER_MINUTE * gameMinutesPassed;
+    const intellectBonus = 1 + (char.currentStats.intellect * 0.01);
+    const finalChance = discoveryChance * intellectBonus;
+
+    if (Math.random() < finalChance) {
+        const affinityMilestone = ACADEMY_MILESTONES.find(m => m.name === "Chakra Affinity Test");
+        if (affinityMilestone) {
+            addToNarrative("Through intense focus on your chakra, you feel a sudden, instinctual pull...", "event-message");
+            const outcome = affinityMilestone.resolve(char);
+            setTimeout(() => {
+                addToNarrative(outcome.narrative, outcome.cssClass || "system-message", 1000);
+                updateUI();
+            }, 2000);
+        }
+    }
+}
+
+// --- NEW: Kekkei Genkai Discovery Logic ---
+
+/**
+ * Handles the narrative and mechanical awakening of a Kekkei Genkai.
+ * @param {object} char - The character object.
+ */
+function triggerKekkeiGenkaiAwakening(char) {
+    if (!char.kekkeiGenkai || char.kekkeiGenkai.awakened) return;
+
+    char.kekkeiGenkai.awakened = true;
+    const kgName = char.kekkeiGenkai.name;
+
+    addToNarrative(`**A torrent of power erupts from within!** You feel a strange, new sensation as your chakra pathways realign!`, 'event-message success');
+    setTimeout(() => {
+        addToNarrative(`You have awakened your bloodline limit: **${kgName}**!`, 'skill-gain-message', 1000);
+        // Future logic can add special KG-related jutsu or skills here.
+        updateUI();
+    }, 3000);
+}
+
+/**
+ * Checks for a spontaneous, random awakening of a Kekkei Genkai.
+ * @param {object} char - The character object.
+ */
+function checkForSpontaneousKGAwakening(char) {
+    if (!char.kekkeiGenkai || char.kekkeiGenkai.awakened) return;
+
+    if (Math.random() < KEKKEI_GENKAI_DISCOVERY_CHANCE_PER_DAY) {
+        triggerKekkeiGenkaiAwakening(char);
+    }
+}
+
+/**
+ * Checks if the character meets the training thresholds to awaken their Kekkei Genkai.
+ * Called from addXp on every level-up.
+ * @param {object} char - The character object.
+ * @param {string} skillName - The name of the skill that just leveled up.
+ * @param {number} newLevel - The new level of the skill.
+ */
+export function checkForKekkeiGenkaiAwakening(char, skillName, newLevel) {
+    if (!char.kekkeiGenkai || char.kekkeiGenkai.awakened) return;
+
+    const kg = char.kekkeiGenkai;
+
+    if (kg.elements.length === 2) { // Elemental KG
+        const threshold = KEKKEI_GENKAI_AWAKENING_THRESHOLDS.ELEMENTAL;
+        const skill1Name = `Ninjutsu${kg.elements[0]}`;
+        const skill2Name = `Ninjutsu${kg.elements[1]}`;
+        
+        const skill1 = char.skills.chakra[skill1Name];
+        const skill2 = char.skills.chakra[skill2Name];
+
+        if (skill1 && skill2 && skill1.level >= threshold && skill2.level >= threshold) {
+            triggerKekkeiGenkaiAwakening(char);
+        }
+    } else { // Special KG (like Crystal Release)
+        const threshold = KEKKEI_GENKAI_AWAKENING_THRESHOLDS.SPECIAL;
+        if (kg.name === "Crystal Release") {
+            const theory = char.skills.academic.NinjutsuTheory;
+            const control = char.skills.chakra.ChakraControl;
+            if (theory && control && theory.level >= threshold && control.level >= threshold) {
+                triggerKekkeiGenkaiAwakening(char);
+            }
+        }
+    }
+}
 
 /**
  * Schedules a major milestone event for a random day within the character's current year of age (Ages 1-5).
@@ -93,6 +191,7 @@ function triggerVignetteEvent() {
 export function handleFormativeYearsCycle() {
     triggerScheduledMilestone();
     triggerVignetteEvent();
+    checkForSpontaneousKGAwakening(gameState.character); // Add KG check
 }
 
 // --- ACADEMY PHASE LOGIC (Ages 6+) ---
@@ -147,43 +246,39 @@ export function handleDirectiveTraining(gameMinutesPassed) {
     const directive = char.currentDirective;
     if (!directive) return;
 
+    // --- NEW: Add affinity discovery check here ---
+    checkForAffinityDiscovery(char, gameMinutesPassed);
+
     const baseXPPerMinute = 0.2; 
     const xpAmount = baseXPPerMinute * gameMinutesPassed;
 
-    // --- JUTSU TRAINING LOGIC (REWORKED & FIXED) ---
     if (directive.type === 'JUTSU') {
         const { jutsuName } = directive;
         const jutsu = char.skills.jutsu[jutsuName];
         const jutsuLibraryData = JUTSU_LIBRARY[jutsuName];
 
         if (jutsu && jutsuLibraryData) {
-            // 1. Calculate all multipliers first to get the final XP amount.
             const theoryBonus = 1 + (char.skills.academic.NinjutsuTheory.level * 0.02);
             let xpMultiplier = theoryBonus;
             
             const element = jutsuLibraryData.tags.element;
             if (element !== 'Non-Elemental' && ELEMENTS.includes(element)) {
-                const schoolSkillName = 'Ninjutsu' + element; // e.g., 'NinjutsuWind'
+                const schoolSkillName = 'Ninjutsu' + element;
                 const elementalSchool = char.skills.chakra[schoolSkillName];
                 
                 if (elementalSchool) {
                     const schoolBonus = 1 + (elementalSchool.level * 0.05);
-                    xpMultiplier *= schoolBonus; // Stack the school bonus on top
+                    xpMultiplier *= schoolBonus;
                 }
             }
             
             const finalXpAmount = xpAmount * xpMultiplier;
 
-            // 2. Apply all XP gains based on the final, calculated amount.
-            // Main Jutsu Gain
             addXp(jutsu, finalXpAmount, jutsuName);
-
-            // Core Synergistic Gains
             addXp(char.skills.chakra.ChakraControl, finalXpAmount * 0.25, 'ChakraControl');
             addXp(char.skills.chakra.HandSealSpeed, finalXpAmount * 0.15, 'HandSealSpeed');
             addXp(char.skills.chakra.FormTransformation, finalXpAmount * 0.20, 'FormTransformation');
             
-            // Tag-based Synergistic Gains
             const keywords = jutsuLibraryData.tags.keywords || [];
             if (element !== 'Non-Elemental' && ELEMENTS.includes(element)) {
                 const schoolSkillName = 'Ninjutsu' + element;
@@ -196,10 +291,9 @@ export function handleDirectiveTraining(gameMinutesPassed) {
                 addXp(char.skills.chakra.Genjutsu, finalXpAmount * 0.20, 'Genjutsu');
             }
         }
-        return; // Exit after handling JUTSU
+        return;
     }
 
-    // --- SKILL TRAINING LOGIC (Unchanged) ---
     if (directive.type === 'SKILL') {
         const directiveData = TRAINING_DIRECTIVES[directive.skillName];
         if (!directiveData) {
@@ -327,6 +421,9 @@ export function handleDowntimeDailyCycle() {
         handleMandatoryAcademyClasses();
         handleAcademyMilestone();
     }
+
+    // Add KG check for academy students and Genin
+    checkForSpontaneousKGAwakening(char);
 
     if (Math.random() < 0.25) { 
        triggerDirectiveNarrativeEvent();

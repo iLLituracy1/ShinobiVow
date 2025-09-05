@@ -376,6 +376,7 @@ export const JUTSU_LIBRARY = {
     'Strike': {
         name: 'Strike', rank: 'E', type: 'Offensive', chakraCost: 0, staminaCost: 5, basePower: 15,
         tags: {
+            category: 'Taijutsu',
             element: 'Non-Elemental', effect: 'Standard', range: 'Melee', complexity: 'None',
             validRanges: ['Engaged'],
         },
@@ -389,7 +390,7 @@ export const JUTSU_LIBRARY = {
         }
     },
     'Substitution Jutsu': {
-        name: 'Substitution Jutsu', rank: 'E', type: 'Defensive', chakraCost: 10, staminaCost: 5, basePower: 0,
+        name: 'Substitution Jutsu', rank: 'E', type: 'Counter', chakraCost: 10, staminaCost: 5, basePower: 0, // MODIFIED: type is now Counter
         tags: {
             element: 'Non-Elemental', effect: 'Evasion', range: 'Short', complexity: 'Simple',
             validRanges: ['Engaged', 'Short', 'Mid'],
@@ -412,34 +413,63 @@ export const JUTSU_LIBRARY = {
     },
     effect: { rangeChange: 'Engaged' } 
 },
-    'Clone Jutsu': {
-        name: 'Clone Jutsu', rank: 'E', type: 'Supplementary', chakraCost: 5, staminaCost: 0, basePower: 0,
-        tags: {
-            element: 'Non-Elemental', effect: 'Illusion', range: 'Personal', complexity: 'Simple',
-            validRanges: ['Engaged', 'Short', 'Mid', 'Long'],
-        },
-            effect: {
-                rangeChange: null,
-                battlefieldEffect: { name: 'Illusory Clones', duration: 2 } // Creates decoys to confuse enemies
-            }
-        
+'Clone Jutsu': {
+    name: 'Clone Jutsu', rank: 'E', type: 'Supplementary', chakraCost: 5, staminaCost: 0, basePower: 0,
+    tags: {
+        element: 'Non-Elemental', effect: 'Illusion', range: 'Personal', complexity: 'Simple',
+        validRanges: ['Engaged', 'Short', 'Mid', 'Long'],
     },
-    'Transformation Jutsu': {
-        name: 'Transformation Jutsu', rank: 'E', type: 'Supplementary', chakraCost: 5, staminaCost: 0, basePower: 0,
+    effect: {
+        rangeChange: null,
+        // --- MODIFICATION: Clones are now a self-applied tag with ownership ---
+        // This is no longer a battlefieldEffect. It's a personal buff/setup.
+        appliesTag: { 
+            name: 'Setup: Clones_Active', 
+            chance: 1.0, 
+            duration: 10 // Duration is now part of the tag
+        }
+    }
+},
+    'Attempt to Escape Grapple': {
+        name: 'Attempt to Escape Grapple', rank: 'E', type: 'Supplementary', chakraCost: 0, staminaCost: 10, basePower: 0,
         tags: {
-            element: 'Non-Elemental', effect: 'Disguise', range: 'Personal', complexity: 'Simple',
+            category: 'Taijutsu',
+            element: 'Non-Elemental', effect: 'Escape_Grapple', range: 'Melee', complexity: 'None',
+            validRanges: ['Engaged'], // Can only be used while grappled, which is always 'Engaged'
+        },
+        effect: { 
+            // This jutsu's effect is handled with special logic in executeAction
+        }
+    },
+'Transformation Jutsu': {
+    name: 'Transformation Jutsu', rank: 'E', type: 'Supplementary', chakraCost: 5, staminaCost: 0, basePower: 0,
+    tags: {
+        element: 'Non-Elemental', effect: 'Deception', range: 'Personal', complexity: 'Simple', // MODIFIED: New 'Deception' effect tag
+        validRanges: ['Engaged', 'Short', 'Mid', 'Long'],
+    },
+    effect: {
+        // MODIFICATION: The effect is now a check, not a guaranteed tag.
+        check: { type: 'PerceptionIntellect', difficulty: 35 } // Base difficulty to see through the initial cast.
+    }
+},
+
+    'Analyze': {
+        name: 'Analyze', rank: 'E', type: 'Supplementary', chakraCost: 0, staminaCost: 5, basePower: 0,
+        tags: {
+            category: 'Tactical',
+            element: 'Non-Elemental', effect: 'Information_Gathering', range: 'All', complexity: 'None',
             validRanges: ['Engaged', 'Short', 'Mid', 'Long'],
         },
-            effect: {
-                rangeChange: null,
-                appliesTag: { name: 'Disguised', chance: 1.0, duration: 5 } // Allows blending in or mimicking others
-            }
+        effect: { 
+            // Effect is handled with special logic in executeAction
+        }
     },
     // --- E-Rank: Tool-Based Actions ---
 'Throw Kunai': {
     name: 'Throw Kunai', rank: 'E', type: 'Offensive', chakraCost: 0, staminaCost: 3, basePower: 12,
     requiresItem: { id: 'kunai' }, // This action requires a kunai
     tags: {
+        category: 'Tool',
         element: 'Non-Elemental', effect: 'Projectile', range: 'Short', complexity: 'None',
         validRanges: ['Short', 'Mid'],
     },
@@ -448,6 +478,7 @@ export const JUTSU_LIBRARY = {
     name: 'Throw Shuriken', rank: 'E', type: 'Offensive', chakraCost: 0, staminaCost: 2, basePower: 9,
     requiresItem: { id: 'shuriken' }, // This action requires a shuriken
     tags: {
+        category: 'Tool',
         element: 'Non-Elemental', effect: 'Projectile', range: 'Short', complexity: 'None',
         validRanges: ['Short', 'Mid'],
     },
@@ -457,11 +488,11 @@ export const JUTSU_LIBRARY = {
     requiresItem: { id: 'paper_bomb' },
     tags: {
         element: 'Non-Elemental', effect: 'Trap', range: 'Personal', complexity: 'Simple',
-        validRanges: ['Engaged', 'Short', 'Mid', 'Long'], // Can be set from any range
+        validRanges: [ 'Mid', 'Long'],
     },
     effect: {
-        //  Now applies a personal tag to the user, arming the trap.
-        appliesTag: { name: 'Trap Set', chance: 1.0, duration: 4, power: 75 }
+        // MODIFICATION: The tag is now more specific, indicating a setup is active.
+        appliesTag: { name: 'Setup: Trap_Ready', chance: 1.0, duration: 4, power: 75 }
     }
 },
 
@@ -469,7 +500,8 @@ export const JUTSU_LIBRARY = {
     'Heavy Strike': {
         name: 'Heavy Strike', rank: 'D', type: 'Offensive', chakraCost: 0, staminaCost: 15, basePower: 25,
         tags: {
-            element: 'Non-Elemental', effect: 'Standard', range: 'Melee', complexity: 'None',
+            category: 'Taijutsu',
+            element: 'Non-Elemental', effect: 'StanceBreak', range: 'Melee', complexity: 'None', 
             keywords: ['Powerful'],
             validRanges: ['Engaged'], effect: { 
                 rangeChange: null,
@@ -480,11 +512,25 @@ export const JUTSU_LIBRARY = {
     'Leaf Whirlwind': {
         name: 'Leaf Whirlwind', rank: 'D', type: 'Offensive', chakraCost: 0, staminaCost: 10, basePower: 10,
         tags: {
-            element: 'Non-Elemental', effect: 'StanceBreak', range: 'Melee', complexity: 'None',
+            category: 'Taijutsu',
+            element: 'Non-Elemental', effect: 'StanceBreak', range: 'Melee', complexity: 'None', 
             keywords: ['Follow Up'],
             validRanges: ['Short'],
         },
         effect: { rangeChange: 'Engaged' }
+    },
+        'Taijutsu: Takedown': {
+        name: 'Taijutsu: Takedown', rank: 'D', type: 'Offensive', chakraCost: 0, staminaCost: 20, basePower: 15,
+        tags: {
+            category: 'Taijutsu',
+            element: 'Non-Elemental', effect: 'Grapple', range: 'Melee', complexity: 'None',
+            keywords: ['Control'],
+            validRanges: ['Engaged'],
+        },
+        effect: { 
+            rangeChange: null,
+            appliesTag: { name: 'Grappled', chance: 0.7, duration: 3 } // 70% chance to apply Grappled for 3 ticks
+        }
     },
     'Body Flicker Technique': {
         name: 'Body Flicker Technique', rank: 'D', type: 'Supplementary', chakraCost: 10, staminaCost: 5, basePower: 0,
@@ -497,6 +543,7 @@ export const JUTSU_LIBRARY = {
     'Fire Style: Ember Jutsu': {
         name: 'Fire Style: Ember Jutsu', rank: 'D', type: 'Offensive', chakraCost: 15, staminaCost: 0, basePower: 20,
         tags: {
+            category: 'Ninjutsu',
             element: 'Fire', effect: 'Projectile', range: 'Short', complexity: 'Moderate',
             validRanges: ['Short', 'Mid'], effect: { rangeChange: null }
         }
@@ -504,6 +551,7 @@ export const JUTSU_LIBRARY = {
     'Fire Style: Flame Bullet Jutsu': {
         name: 'Fire Style: Flame Bullet Jutsu', rank: 'D', type: 'Offensive', chakraCost: 20, staminaCost: 0, basePower: 25,
         tags: {
+            category: 'Ninjutsu',
             element: 'Fire', effect: 'Projectile', range: 'Short', complexity: 'Moderate',
             validRanges: ['Short', 'Mid'], effect: {
                 rangeChange: null,
@@ -514,6 +562,7 @@ export const JUTSU_LIBRARY = {
     'Water Style: Rushing Water Jutsu': {
         name: 'Water Style: Rushing Water Jutsu', rank: 'D', type: 'Offensive', chakraCost: 20, staminaCost: 0, basePower: 18,
         tags: {
+            category: 'Ninjutsu',
             element: 'Water', effect: 'Projectile', range: 'Short', complexity: 'Moderate',
             validRanges: ['Short', 'Mid'], effect: { rangeChange: null }
         }
@@ -521,6 +570,7 @@ export const JUTSU_LIBRARY = {
     'Water Style: Mist Veil Jutsu': {
         name: 'Water Style: Mist Veil Jutsu', rank: 'D', type: 'Supplementary', chakraCost: 15, staminaCost: 0, basePower: 0,
         tags: {
+            category: 'Ninjutsu',
             element: 'Water', effect: 'Obscure', range: 'Short', complexity: 'Simple',
             validRanges: ['Short', 'Mid'], effect: {
                 rangeChange: null,
@@ -531,13 +581,15 @@ export const JUTSU_LIBRARY = {
     'Wind Style: Gale Palm Jutsu': {
         name: 'Wind Style: Gale Palm Jutsu', rank: 'D', type: 'Supplementary', chakraCost: 15, staminaCost: 0, basePower: 5,
         tags: {
+            category: 'Ninjutsu',
             element: 'Wind', effect: 'Push', range: 'Short', complexity: 'Simple',
-            validRanges: ['Engaged', 'Short', 'Mid'], effect: { rangeChange: null }
+            validRanges: ['Engaged', 'Short', 'Mid'], effect: { rangeChange: 'Mid' }
         }
     },
     'Wind Style: Wind Cutter Jutsu': {
         name: 'Wind Style: Wind Cutter Jutsu', rank: 'D', type: 'Offensive', chakraCost: 18, staminaCost: 0, basePower: 22,
         tags: {
+            category: 'Ninjutsu',
             element: 'Wind', effect: 'Projectile', range: 'Short', complexity: 'Moderate',
             validRanges: ['Short', 'Mid'], effect: { rangeChange: null }
         }
@@ -545,6 +597,7 @@ export const JUTSU_LIBRARY = {
     'Earth Style: Mud-Shot Jutsu': {
         name: 'Earth Style: Mud-Shot Jutsu', rank: 'D', type: 'Supplementary', chakraCost: 18, staminaCost: 0, basePower: 10,
         tags: {
+            category: 'Ninjutsu',
             element: 'Earth', effect: 'Debuff', range: 'Short', complexity: 'Moderate',
             validRanges: ['Short', 'Mid'], effect: {
                 rangeChange: null,
@@ -555,6 +608,7 @@ export const JUTSU_LIBRARY = {
     'Earth Style: Stone Bullet Jutsu': {
         name: 'Earth Style: Stone Bullet Jutsu', rank: 'D', type: 'Offensive', chakraCost: 20, staminaCost: 0, basePower: 20,
         tags: {
+            category: 'Ninjutsu',
             element: 'Earth', effect: 'Projectile', range: 'Short', complexity: 'Moderate',
             validRanges: ['Short', 'Mid'], effect: { rangeChange: null }
         }
@@ -562,6 +616,7 @@ export const JUTSU_LIBRARY = {
     'Lightning Style: Static Spark Jutsu': {
         name: 'Lightning Style: Static Spark Jutsu', rank: 'D', type: 'Offensive', chakraCost: 25, staminaCost: 0, basePower: 22,
         tags: {
+            category: 'Ninjutsu',
             element: 'Lightning', effect: 'FastProjectile', range: 'Short', complexity: 'Moderate',
             validRanges: ['Short', 'Mid'], effect: { rangeChange: null }
         }
@@ -569,6 +624,7 @@ export const JUTSU_LIBRARY = {
     'Lightning Style: Shock Wave Jutsu': {
         name: 'Lightning Style: Shock Wave Jutsu', rank: 'D', type: 'Offensive', chakraCost: 22, staminaCost: 0, basePower: 18,
         tags: {
+            category: 'Ninjutsu',
             element: 'Lightning', effect: 'AoE', range: 'Short', complexity: 'Moderate',
             validRanges: ['Engaged', 'Short'], effect: {
                 rangeChange: null,
@@ -579,6 +635,7 @@ export const JUTSU_LIBRARY = {
     'Genjutsu: False Surroundings': {
         name: 'Genjutsu: False Surroundings', rank: 'D', type: 'Supplementary', chakraCost: 15, staminaCost: 0, basePower: 0,
         tags: {
+            category: 'Genjutsu',
             element: 'Non-Elemental', effect: 'Mental', range: 'Short', complexity: 'Simple',
             keywords: ['Genjutsu'],
             validRanges: ['Short', 'Mid'], effect: {
@@ -589,9 +646,26 @@ export const JUTSU_LIBRARY = {
     },
 
     // --- C-Rank: Chunin Specialties & Battlefield Control ---
+
+        'Shadow Shuriken Jutsu': {
+        name: 'Shadow Shuriken Jutsu', rank: 'C', type: 'Offensive', chakraCost: 30, staminaCost: 5, basePower: 15,
+        requiresItem: { id: 'shuriken' },
+        tags: {
+            category: 'Tool',
+            element: 'Non-Elemental', effect: 'MultiProjectile', range: 'Mid', complexity: 'Moderate',
+            keywords: ['Deceptive'],
+            validRanges: ['Short', 'Mid', 'Long'],
+        },
+        effect: { 
+            rangeChange: null,
+            // This jutsu's power comes from its deceptive nature, making it harder to dodge
+            // The core damage is lower, but it hits multiple times and is more accurate.
+        }
+    },
     'Fire Style: Great Fireball Jutsu': {
         name: 'Fire Style: Great Fireball Jutsu', rank: 'C', type: 'Offensive', chakraCost: 60, staminaCost: 0, basePower: 55,
         tags: {
+            category: 'Ninjutsu',
             element: 'Fire', effect: 'AoE', range: 'Mid', complexity: 'Complex',
             validRanges: ['Mid', 'Long'], effect: { rangeChange: null }
         }
@@ -599,6 +673,7 @@ export const JUTSU_LIBRARY = {
     'Fire Style: Phoenix Flower Jutsu': {
         name: 'Fire Style: Phoenix Flower Jutsu', rank: 'C', type: 'Offensive', chakraCost: 50, staminaCost: 0, basePower: 40,
         tags: {
+            category: 'Ninjutsu',
             element: 'Fire', effect: 'MultiProjectile', range: 'Mid', complexity: 'Complex',
             validRanges: ['Short', 'Mid'], effect: {
                 rangeChange: null,
@@ -609,6 +684,7 @@ export const JUTSU_LIBRARY = {
     'Fire Style: Burning Ash Jutsu': {
         name: 'Fire Style: Burning Ash Jutsu', rank: 'C', type: 'Supplementary', chakraCost: 45, staminaCost: 0, basePower: 20,
         tags: {
+            category: 'Ninjutsu',
             element: 'Fire', effect: 'AoEDebuff', range: 'Mid', complexity: 'Moderate',
             validRanges: ['Mid'], effect: {
                 rangeChange: null,
@@ -619,6 +695,7 @@ export const JUTSU_LIBRARY = {
     'Water Style: Water Bullet Jutsu': {
         name: 'Water Style: Water Bullet Jutsu', rank: 'C', type: 'Offensive', chakraCost: 55, staminaCost: 0, basePower: 50,
         tags: {
+            category: 'Ninjutsu',
             element: 'Water', effect: 'Projectile', range: 'Mid', complexity: 'Complex',
             validRanges: ['Mid', 'Long'], effect: { rangeChange: null }
         }
@@ -626,6 +703,7 @@ export const JUTSU_LIBRARY = {
     'Water Style: Wild Water Wave Jutsu': {
         name: 'Water Style: Wild Water Wave Jutsu', rank: 'C', type: 'Offensive', chakraCost: 50, staminaCost: 0, basePower: 45,
         tags: {
+            category: 'Ninjutsu',
             element: 'Water', effect: 'AoE', range: 'Short', complexity: 'Moderate',
             validRanges: ['Short', 'Mid'], effect: {
                 rangeChange: null,
@@ -636,6 +714,7 @@ export const JUTSU_LIBRARY = {
     'Water Style: Hidden Mist Jutsu': {
         name: 'Water Style: Hidden Mist Jutsu', rank: 'C', type: 'Supplementary', chakraCost: 50, staminaCost: 0, basePower: 0,
         tags: {
+            category: 'Ninjutsu',
             element: 'Water', effect: 'Obscure', range: 'All', complexity: 'Simple',
             validRanges: ['Short', 'Mid', 'Long'], effect: {
                 rangeChange: null,
@@ -646,6 +725,7 @@ export const JUTSU_LIBRARY = {
     'Wind Style: Great Breakthrough Jutsu': {
         name: 'Wind Style: Great Breakthrough Jutsu', rank: 'C', type: 'Offensive', chakraCost: 50, staminaCost: 0, basePower: 45,
         tags: {
+            category: 'Ninjutsu',
             element: 'Wind', effect: 'AoE', range: 'Mid', complexity: 'Complex',
             validRanges: ['Mid', 'Long'], effect: {
                 rangeChange: null,
@@ -656,6 +736,7 @@ export const JUTSU_LIBRARY = {
     'Wind Style: Pressure Damage Jutsu': {
         name: 'Wind Style: Pressure Damage Jutsu', rank: 'C', type: 'Offensive', chakraCost: 55, staminaCost: 0, basePower: 50,
         tags: {
+            category: 'Ninjutsu',
             element: 'Wind', effect: 'AoE', range: 'Short', complexity: 'Moderate',
             validRanges: ['Short', 'Mid'], effect: { rangeChange: null }
         }
@@ -663,6 +744,7 @@ export const JUTSU_LIBRARY = {
     'Earth Style: Headhunter Jutsu': {
         name: 'Earth Style: Headhunter Jutsu', rank: 'C', type: 'Supplementary', chakraCost: 45, staminaCost: 0, basePower: 5,
         tags: {
+            category: 'Ninjutsu',
             element: 'Earth', effect: 'Restraint', range: 'Short', complexity: 'Moderate',
             validRanges: ['Short', 'Mid'], effect: {
                 rangeChange: null,
@@ -673,6 +755,7 @@ export const JUTSU_LIBRARY = {
     'Earth Style: Mud Wall Jutsu': {
         name: 'Earth Style: Mud Wall Jutsu', rank: 'C', type: 'Defensive', chakraCost: 40, staminaCost: 10, basePower: 0,
         tags: {
+            category: 'Ninjutsu',
             element: 'Earth', effect: 'Barrier', range: 'Personal', complexity: 'Complex',
             validRanges: ['Short', 'Mid', 'Long'], effect: {
                 rangeChange: null,
@@ -683,6 +766,7 @@ export const JUTSU_LIBRARY = {
     'Earth Style: Rock Shelter Jutsu': {
         name: 'Earth Style: Rock Shelter Jutsu', rank: 'C', type: 'Defensive', chakraCost: 50, staminaCost: 0, basePower: 0,
         tags: {
+            category: 'Ninjutsu',
             element: 'Earth', effect: 'Barrier', range: 'Short', complexity: 'Moderate',
             validRanges: ['Engaged', 'Short'], effect: {
                 rangeChange: null,
@@ -693,6 +777,7 @@ export const JUTSU_LIBRARY = {
     'Lightning Style: Lightning Ball Jutsu': {
         name: 'Lightning Style: Lightning Ball Jutsu', rank: 'C', type: 'Offensive', chakraCost: 60, staminaCost: 0, basePower: 55,
         tags: {
+            category: 'Ninjutsu',
             element: 'Lightning', effect: 'Projectile', range: 'Mid', complexity: 'Complex',
             validRanges: ['Mid', 'Long'], effect: {
                 rangeChange: null,
@@ -703,6 +788,7 @@ export const JUTSU_LIBRARY = {
     'Lightning Style: Thunderclap Jutsu': {
         name: 'Lightning Style: Thunderclap Jutsu', rank: 'C', type: 'Offensive', chakraCost: 50, staminaCost: 0, basePower: 40,
         tags: {
+            category: 'Ninjutsu',
             element: 'Lightning', effect: 'AoE', range: 'Short', complexity: 'Moderate',
             validRanges: ['Short'], effect: {
                 rangeChange: null,
@@ -713,6 +799,7 @@ export const JUTSU_LIBRARY = {
     'Genjutsu: Demonic Illusion': {
         name: 'Genjutsu: Demonic Illusion', rank: 'C', type: 'Supplementary', chakraCost: 40, staminaCost: 0, basePower: 0,
         tags: {
+            category: 'Genjutsu',
             element: 'Non-Elemental', effect: 'Mental', range: 'Mid', complexity: 'Moderate',
             keywords: ['Genjutsu'],
             validRanges: ['Short', 'Mid'], effect: {
@@ -724,6 +811,7 @@ export const JUTSU_LIBRARY = {
     'Genjutsu: Bringer of Darkness': {
         name: 'Genjutsu: Bringer of Darkness', rank: 'C', type: 'Supplementary', chakraCost: 50, staminaCost: 0, basePower: 0,
         tags: {
+            category: 'Genjutsu',
             element: 'Non-Elemental', effect: 'Mental', range: 'Mid', complexity: 'Complex',
             keywords: ['Genjutsu'],
             validRanges: ['Mid'], effect: {
@@ -735,6 +823,7 @@ export const JUTSU_LIBRARY = {
     'Taijutsu: Dynamic Entry': {
         name: 'Taijutsu: Dynamic Entry', rank: 'C', type: 'Offensive', chakraCost: 0, staminaCost: 20, basePower: 35,
         tags: {
+            category: 'Taijutsu',
             element: 'Non-Elemental', effect: 'Charge', range: 'Short', complexity: 'None',
             keywords: ['Powerful'],
             validRanges: ['Short', 'Mid']
@@ -749,6 +838,7 @@ export const JUTSU_LIBRARY = {
     'Fire Style: Dragon Flame Jutsu': {
         name: 'Fire Style: Dragon Flame Jutsu', rank: 'B', type: 'Offensive', chakraCost: 80, staminaCost: 0, basePower: 70,
         tags: {
+            category: 'Ninjutsu',
             element: 'Fire', effect: 'LineAoE', range: 'Long', complexity: 'High',
             validRanges: ['Mid', 'Long'], effect: {
                 rangeChange: null,
@@ -759,6 +849,7 @@ export const JUTSU_LIBRARY = {
     'Fire Style: Explosive Flame Jutsu': {
         name: 'Fire Style: Explosive Flame Jutsu', rank: 'B', type: 'Offensive', chakraCost: 75, staminaCost: 0, basePower: 65,
         tags: {
+            category: 'Ninjutsu',
             element: 'Fire', effect: 'AoE', range: 'Mid', complexity: 'High',
             validRanges: ['Mid'], effect: {
                 rangeChange: null,
@@ -769,6 +860,7 @@ export const JUTSU_LIBRARY = {
     'Water Style: Water Dragon Jutsu': {
         name: 'Water Style: Water Dragon Jutsu', rank: 'B', type: 'Offensive', chakraCost: 85, staminaCost: 0, basePower: 75,
         tags: {
+            category: 'Ninjutsu',
             element: 'Water', effect: 'Projectile', range: 'Long', complexity: 'High',
             validRanges: ['Mid', 'Long'], effect: { rangeChange: null }
         }
@@ -776,6 +868,7 @@ export const JUTSU_LIBRARY = {
     'Water Style: Water Prison Jutsu': {
         name: 'Water Style: Water Prison Jutsu', rank: 'B', type: 'Supplementary', chakraCost: 70, staminaCost: 0, basePower: 0,
         tags: {
+            category: 'Ninjutsu',
             element: 'Water', effect: 'Restraint', range: 'Short', complexity: 'High',
             validRanges: ['Engaged', 'Short'], effect: {
                 rangeChange: null,
@@ -786,6 +879,7 @@ export const JUTSU_LIBRARY = {
     'Wind Style: Vacuum Sphere Jutsu': {
         name: 'Wind Style: Vacuum Sphere Jutsu', rank: 'B', type: 'Offensive', chakraCost: 80, staminaCost: 0, basePower: 70,
         tags: {
+            category: 'Ninjutsu',
             element: 'Wind', effect: 'MultiProjectile', range: 'Mid', complexity: 'High',
             validRanges: ['Mid'], effect: { rangeChange: null }
         }
@@ -793,6 +887,7 @@ export const JUTSU_LIBRARY = {
     'Wind Style: Tornado Barrier Jutsu': {
         name: 'Wind Style: Tornado Barrier Jutsu', rank: 'B', type: 'Defensive', chakraCost: 75, staminaCost: 0, basePower: 0,
         tags: {
+            category: 'Ninjutsu',
             element: 'Wind', effect: 'Barrier', range: 'Personal', complexity: 'High',
             validRanges: ['Short', 'Mid'], effect: {
                 rangeChange: null,
@@ -803,6 +898,7 @@ export const JUTSU_LIBRARY = {
     'Earth Style: Earth Flow River Jutsu': {
         name: 'Earth Style: Earth Flow River Jutsu', rank: 'B', type: 'Supplementary', chakraCost: 70, staminaCost: 0, basePower: 20,
         tags: {
+            category: 'Ninjutsu',
             element: 'Earth', effect: 'TerrainAlter', range: 'Mid', complexity: 'High',
             validRanges: ['Mid'], effect: {
                 rangeChange: null,
@@ -813,6 +909,7 @@ export const JUTSU_LIBRARY = {
     'Earth Style: Stone Golem Jutsu': {
         name: 'Earth Style: Stone Golem Jutsu', rank: 'B', type: 'Supplementary', chakraCost: 80, staminaCost: 0, basePower: 0,
         tags: {
+            category: 'Ninjutsu',
             element: 'Earth', effect: 'Summon', range: 'Short', complexity: 'High',
             validRanges: ['Short'], effect: {
                 rangeChange: null,
@@ -823,6 +920,7 @@ export const JUTSU_LIBRARY = {
     'Lightning Style: Lightning Hound Jutsu': {
         name: 'Lightning Style: Lightning Hound Jutsu', rank: 'B', type: 'Offensive', chakraCost: 85, staminaCost: 0, basePower: 75,
         tags: {
+            category: 'Ninjutsu',
             element: 'Lightning', effect: 'GuidedProjectile', range: 'Mid', complexity: 'High',
             validRanges: ['Mid', 'Long'], effect: {
                 rangeChange: null,
@@ -833,6 +931,7 @@ export const JUTSU_LIBRARY = {
     'Lightning Style: Electromagnetic Barrier Jutsu': {
         name: 'Lightning Style: Electromagnetic Barrier Jutsu', rank: 'B', type: 'Defensive', chakraCost: 70, staminaCost: 0, basePower: 0,
         tags: {
+            category: 'Ninjutsu',
             element: 'Lightning', effect: 'Barrier', range: 'Personal', complexity: 'High',
             validRanges: ['Engaged', 'Short'], effect: {
                 rangeChange: null,
@@ -843,6 +942,7 @@ export const JUTSU_LIBRARY = {
     'Genjutsu: Temple of Nirvana': {
         name: 'Genjutsu: Temple of Nirvana', rank: 'B', type: 'Supplementary', chakraCost: 60, staminaCost: 0, basePower: 0,
         tags: {
+            category: 'Genjutsu',
             element: 'Non-Elemental', effect: 'MentalAoE', range: 'Mid', complexity: 'High',
             keywords: ['Genjutsu'],
             validRanges: ['Mid'], effect: {
@@ -854,11 +954,40 @@ export const JUTSU_LIBRARY = {
     'Taijutsu: Leaf Hurricane': {
         name: 'Taijutsu: Leaf Hurricane', rank: 'B', type: 'Offensive', chakraCost: 0, staminaCost: 30, basePower: 50,
         tags: {
+            category: 'Taijutsu',
             element: 'Non-Elemental', effect: 'MultiHit', range: 'Melee', complexity: 'Moderate',
             keywords: ['Combo'],
             validRanges: ['Engaged'], effect: { rangeChange: null }
         }
     },
+};
+
+
+/**
+ * Defines the standard equipment loadouts for generated NPCs based on their rank.
+ * Values are ranges [min, max] to add variety.
+ */
+export const NPC_EQUIPMENT_LOADOUTS = {
+    'Genin': {
+        'kunai': [8, 12],
+        'shuriken': [8, 12],
+        'paper_bomb': [1, 2],
+        'smoke_bomb': [0, 1]
+    },
+    'Chunin': {
+        'kunai': [15, 20],
+        'shuriken': [15, 20],
+        'paper_bomb': [2, 4],
+        'smoke_bomb': [1, 2],
+        'first_aid_kit': [0, 1]
+    },
+    'Jonin': {
+        'kunai': [20, 25],
+        'shuriken': [20, 25],
+        'paper_bomb': [4, 6],
+        'smoke_bomb': [2, 3],
+        'first_aid_kit': [1, 1]
+    }
 };
 
 
@@ -912,6 +1041,14 @@ export const KEKKEI_GENKAI_POOL = [
     { name: "Boil Release", elements: ["Fire", "Water"], chance: 0.25 }, 
     { name: "Crystal Release", elements: [], chance: 0.1 } 
 ];
+
+// --- Affinity & Kekkei Genkai Discovery System ---
+export const AFFINITY_DISCOVERY_CHANCE_PER_MINUTE = 0.00005; // Base chance per minute of Chakra Control training
+export const KEKKEI_GENKAI_DISCOVERY_CHANCE_PER_DAY = 0.0001; // Tiny chance for spontaneous awakening
+export const KEKKEI_GENKAI_AWAKENING_THRESHOLDS = {
+    ELEMENTAL: 10, // Required level in both elemental ninjutsu schools
+    SPECIAL: 15    // Required level for non-elemental KGs
+};
 
 export const TRAIT_POOL = [
     { name: "Quick Reflexes", type: "positive", effect: "+5% Agility growth", chance: 0.4 },

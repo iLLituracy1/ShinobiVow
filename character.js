@@ -90,6 +90,22 @@ export function generateNewShinobi() {
     char.familyBackground = background.name;
     char.kekkeiGenkai = generateKekkeiGenkai(background);
 
+    // --- NEW: Kekkei Genkai Affinity Synchronization ---
+    if (char.kekkeiGenkai && char.kekkeiGenkai.elements.length === 2) {
+        // If the character has an elemental KG, their affinity is NOT random.
+        // It is locked to the two elements that form the KG.
+        char.chakraAffinity = {
+            type: "Dual",
+            elements: [...char.kekkeiGenkai.elements],
+            strength: AFFINITY_STRENGTHS[Math.floor(Math.random() * AFFINITY_STRENGTHS.length)]
+        };
+    } else {
+        // Otherwise, generate affinities normally.
+        char.chakraAffinity = generateChakraAffinities();
+    }
+    char.affinityDiscovered = false; 
+    // --- END NEW BLOCK ---
+
     const statRanges = {
         "Legendary Heritage": { min: 90, max: 110 },
         "Established Ninja Clan": { min: 65, max: 80 },
@@ -117,11 +133,7 @@ export function generateNewShinobi() {
         char.baseStats[statName] = parseFloat(char.baseStats[statName].toFixed(1));
     });
 
-    // Initialize currentStats as a copy of baseStats
     char.currentStats = { ...char.baseStats };
-
-    char.chakraAffinity = generateChakraAffinities();
-    char.affinityDiscovered = false; 
     
     recalculateVitals();
     char.name = `Child of ${char.village}`;
