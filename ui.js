@@ -120,7 +120,6 @@ export function updateUI() {
     if (ui.charMaxStamina) ui.charMaxStamina.textContent = Math.round(char.maxStamina);
     if (ui.charMorale) ui.charMorale.textContent = Math.round(char.morale);
 
-        // *** LOGIC BLOCK for Conditions ***
     if (ui.charConditions) {
         ui.charConditions.innerHTML = '';
         const allConditions = [...char.injuries, ...char.statusEffects];
@@ -158,6 +157,17 @@ export function updateUI() {
         }
     }
     
+    // --- NEW: Update Kekkei Genkai Display ---
+    if (ui.charKekkeiGenkai) {
+        if (char.kekkeiGenkai) {
+            const status = char.kekkeiGenkai.awakened ? "Awakened" : "Dormant";
+            ui.charKekkeiGenkai.textContent = `${char.kekkeiGenkai.name} (${status})`;
+        } else {
+            ui.charKekkeiGenkai.textContent = "None";
+        }
+    }
+    // --- END NEW BLOCK ---
+    
     // Update Team Roster
     if (ui.teamRosterSection) {
         if (char.team) {
@@ -170,9 +180,8 @@ export function updateUI() {
         }
     }
 
-        // --- Incapacitation UI ---
     if (char.currentActivity === 'Incapacitated' || char.currentActivity === 'Hospitalized') {
-        if(ui.actionButtons.innerHTML !== '') { // Prevents clearing it on every single update
+        if(ui.actionButtons.innerHTML !== '') {
             clearActionButtons();
             addToNarrative("You are too injured to take any actions.", "system-message error");
         }

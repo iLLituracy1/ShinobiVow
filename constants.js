@@ -364,6 +364,225 @@ export const PERSONAL_CONTRIBUTIONS = [
     { role: "Infiltrator", name: "Prepare Disguise Kit", description: "A convincing disguise can bypass guards and open doors that force cannot.", effect: { type: "UNLOCK_CMI", id: "ApplyDisguise" } }
 ];
 
+// JUTSU ACTION NARRATIVES
+
+export const ACTION_NARRATIVES = {
+    // --- E-Rank & Core Actions ---
+    'Strike': [
+        { text: "With a sharp cry, **{attacker}** closes the distance, launching a swift strike at **{target}**!", weight: 1.0 },
+        { text: "**{attacker}** aims a precise, disciplined blow toward **{target}**'s guard!", weight: 1.0 },
+        { text: "Exploding forward, **{attacker}** unleashes a flurry of Taijutsu against **{target}**!", weight: 0.8 }
+    ],
+    'Guard': [
+        { text: "**{attacker}** takes a defensive stance, catching their breath and watching **{target}**'s every move.", weight: 1.0 },
+        { text: "**{attacker}** raises their guard, focusing on recovering stamina for the next exchange.", weight: 1.0 }
+    ],
+    'Substitution Jutsu': [
+        { text: "In a puff of smoke, **{attacker}** vanishes, a log taking the brunt of the attack!", weight: 1.0 },
+        { text: "Just before impact, **{attacker}**'s form dissolves into a flock of crows, evading the technique!", weight: 0.7 }
+    ],
+    'Create Distance': [
+        { text: "**{attacker}** backflips away from **{target}**, creating space.", weight: 1.0 },
+        { text: "Seeing an opening, **{attacker}** disengages, leaping back to a safer distance.", weight: 1.0 }
+    ],
+    'Dash': [
+        { text: "**{attacker}** bursts forward, closing the gap with **{target}** in an instant!", weight: 1.0 },
+        { text: "With a flicker of movement, **{attacker}** rushes towards **{target}** to engage in close combat!", weight: 1.0 }
+    ],
+    'Clone Jutsu': [
+        { text: "With a simple hand seal, illusory copies of **{attacker}** flicker into existence, surrounding **{target}**!", weight: 1.0 },
+        { text: "**{attacker}** creates a diversion, forming several clones to confuse **{target}**.", weight: 1.0 }
+    ],
+    'Attempt to Escape Grapple': [
+        { text: "**{attacker}** struggles fiercely, trying to break **{target}**'s hold!", weight: 1.0 },
+        { text: "With a surge of strength, **{attacker}** attempts to escape the grapple!", weight: 1.0 }
+    ],
+    'Transformation Jutsu': [
+        { text: "**{attacker}** is enveloped in smoke, emerging disguised and ready to deceive **{target}**.", weight: 1.0 },
+        { text: "Weaving a simple seal, **{attacker}**'s form shimmers and changes, creating a perfect illusion.", weight: 1.0 }
+    ],
+    'Analyze': [
+        { text: "**{attacker}**'s eyes narrow, carefully studying **{target}**'s posture and movements for any weakness.", weight: 1.0 },
+        { text: "Taking a moment to observe, **{attacker}** analyzes **{target}**'s fighting style, seeking an opening.", weight: 1.0 }
+    ],
+    'Throw Kunai': [
+        { text: "In a flash of steel, **{attacker}** sends a kunai spinning through the air towards **{target}**!", weight: 1.0 },
+        { text: "**{attacker}** makes a quick, practiced motion, loosing a deadly kunai at **{target}**!", weight: 1.0 }
+    ],
+    'Throw Shuriken': [
+        { text: "With a flick of the wrist, **{attacker}** hurls a shuriken at **{target}**.", weight: 1.0 },
+        { text: "**{attacker}** unleashes a sharp, star-shaped projectile aimed at **{target}**.", weight: 1.0 }
+    ],
+    'Set Paper Bomb Trap': [
+        { text: "**{attacker}** discreetly places a paper bomb, setting a deadly trap for **{target}**.", weight: 1.0 },
+        { text: "With deft fingers, **{attacker}** rigs an explosive surprise for an unwary **{target}**.", weight: 1.0 }
+    ],
+        'Block': [
+        { text: "Reading the attack, **{attacker}** raises their arms, bracing for the impact of **{target}**'s blow!", weight: 1.0 },
+        { text: "With a grunt, **{attacker}** intercepts the strike, attempting to parry **{target}**'s Taijutsu.", weight: 1.0 }
+    ],
+    'Dodge': [
+        { text: "**{attacker}** ducks under the punch, the attack whistling past their ear!", weight: 1.0 },
+        { text: "With a burst of agility, **{attacker}** sways aside, narrowly dodging **{target}**'s attack.", weight: 1.0 }
+    ],
+
+    // --- D-Rank Jutsu ---
+    'Heavy Strike': [
+        { text: "**{attacker}** puts their full weight into a powerful, guard-shattering blow aimed at **{target}**!", weight: 1.0 },
+        { text: "Gathering their strength, **{attacker}** swings a heavy strike, hoping to leave **{target}** exposed!", weight: 1.0 }
+    ],
+    'Leaf Whirlwind': [
+        { text: "**{attacker}** spins low, launching a swift kick at **{target}**'s legs with the Leaf Whirlwind!", weight: 1.0 }
+    ],
+    'Taijutsu: Takedown': [
+        { text: "**{attacker}** lunges low, aiming to grapple **{target}** and drag them to the ground!", weight: 1.0 }
+    ],
+    'Body Flicker Technique': [
+        { text: "**{attacker}** vanishes in a blur of speed, reappearing instantly at a new position.", weight: 1.0 }
+    ],
+    'Fire Style: Ember Jutsu': [
+        { text: "**{attacker}** spits a small but potent ember at **{target}**.", weight: 1.0 }
+    ],
+    'Fire Style: Flame Bullet Jutsu': [
+        { text: "**{attacker}** shoots a concentrated ball of fire at **{target}**.", weight: 1.0 }
+    ],
+    'Water Style: Rushing Water Jutsu': [
+        { text: "**{attacker}** releases a jet of water, aiming to knock **{target}** off balance.", weight: 1.0 }
+    ],
+    'Water Style: Mist Veil Jutsu': [
+        { text: "**{attacker}** exhales a light mist, slightly obscuring the battlefield.", weight: 1.0 }
+    ],
+    'Wind Style: Gale Palm Jutsu': [
+        { text: "**{attacker}** claps their hands, sending a powerful gust of wind towards **{target}**!", weight: 1.0 }
+    ],
+    'Wind Style: Wind Cutter Jutsu': [
+        { text: "**{attacker}** creates a sharp blade of wind and sends it slicing towards **{target}**.", weight: 1.0 }
+    ],
+    'Earth Style: Mud-Shot Jutsu': [
+        { text: "**{attacker}** spits a glob of thick mud, aiming to slow **{target}** down.", weight: 1.0 }
+    ],
+    'Earth Style: Stone Bullet Jutsu': [
+        { text: "**{attacker}** fires a hard-packed projectile of rock and dirt at **{target}**.", weight: 1.0 }
+    ],
+    'Lightning Style: Static Spark Jutsu': [
+        { text: "**{attacker}** channels a crackling spark of lightning towards **{target}**.", weight: 1.0 }
+    ],
+    'Lightning Style: Shock Wave Jutsu': [
+        { text: "**{attacker}** discharges a small wave of electricity, trying to stun **{target}**.", weight: 1.0 }
+    ],
+    'Genjutsu: False Surroundings': [
+        { text: "**{attacker}** attempts to trap **{target}** in a simple illusion, altering their perception of the terrain.", weight: 1.0 }
+    ],
+    
+    // --- C-Rank Jutsu ---
+    'Shadow Shuriken Jutsu': [
+        { text: "**{attacker}** throws a shuriken, which conceals a second, hidden blade in its shadow!", weight: 1.0 }
+    ],
+    'Fire Style: Great Fireball Jutsu': [
+        { text: "**{attacker}**'s hands blur through seals before they exhale a massive, roaring fireball at **{target}**!", weight: 1.0 },
+        { text: "Gathering immense chakra, **{attacker}** unleashes the devastating Great Fireball Jutsu!", weight: 1.0 }
+    ],
+    'Fire Style: Phoenix Flower Jutsu': [
+        { text: "**{attacker}** sends a volley of small, guided fireballs, like a flock of burning birds, towards **{target}**.", weight: 1.0 }
+    ],
+    'Fire Style: Burning Ash Jutsu': [
+        { text: "**{attacker}** exhales a cloud of superheated ash, attempting to engulf **{target}** in the suffocating haze.", weight: 1.0 }
+    ],
+    'Water Style: Water Bullet Jutsu': [
+        { text: "**{attacker}** spits a powerful, high-pressure sphere of water at **{target}**.", weight: 1.0 }
+    ],
+    'Water Style: Wild Water Wave Jutsu': [
+        { text: "**{attacker}** summons a crashing wave to sweep over the battlefield and smash into **{target}**.", weight: 1.0 }
+    ],
+    'Water Style: Hidden Mist Jutsu': [
+        { text: "**{attacker}** blankets the area in a thick, chakra-infused mist, blinding **{target}**.", weight: 1.0 }
+    ],
+    'Wind Style: Great Breakthrough Jutsu': [
+        { text: "**{attacker}** creates a powerful, gale-force wind to blast **{target}** and everything else away!", weight: 1.0 }
+    ],
+    'Wind Style: Pressure Damage Jutsu': [
+        { text: "A sphere of chaotic, pressurized wind forms around **{attacker}** before violently expanding towards **{target}**.", weight: 1.0 }
+    ],
+    'Earth Style: Headhunter Jutsu': [
+        { text: "**{attacker}** dives into the earth, attempting to ambush **{target}** from below and trap them.", weight: 1.0 }
+    ],
+    'Earth Style: Mud Wall Jutsu': [
+        { text: "**{attacker}** slams their hands on the ground, and a thick wall of earth erupts to provide cover!", weight: 1.0 }
+    ],
+    'Earth Style: Rock Shelter Jutsu': [
+        { text: "**{attacker}** creates a protective dome of rock around themself, bracing for an attack.", weight: 1.0 }
+    ],
+    'Lightning Style: Lightning Ball Jutsu': [
+        { text: "A condensed ball of pure lightning forms in **{attacker}**'s hand before being shot at **{target}**.", weight: 1.0 }
+    ],
+    'Lightning Style: Thunderclap Jutsu': [
+        { text: "**{attacker}** unleashes a deafening thunderclap, aiming to disorient **{target}** with sound and shock.", weight: 1.0 }
+    ],
+    'Genjutsu: Demonic Illusion': [
+        { text: "**{attacker}** makes eye contact, attempting to trap **{target}** in a nightmarish genjutsu.", weight: 1.0 }
+    ],
+    'Genjutsu: Bringer of Darkness': [
+        { text: "**{attacker}** casts an illusion that plunges **{target}** into a world of absolute, terrifying darkness.", weight: 1.0 }
+    ],
+    'Taijutsu: Dynamic Entry': [
+        { text: "With a powerful shout, **{attacker}** launches a flying kick, a bold and reckless opening gambit against **{target}**!", weight: 1.0 }
+    ],
+    
+    // --- B-Rank Jutsu ---
+    'Fire Style: Dragon Flame Jutsu': [
+        { text: "**{attacker}** launches a stream of fire that takes the form of a dragon's head, seeking to incinerate **{target}**.", weight: 1.0 }
+    ],
+    'Fire Style: Explosive Flame Jutsu': [
+        { text: "**{attacker}** sends a specialized fireball that detonates with concussive force near **{target}**.", weight: 1.0 }
+    ],
+    'Water Style: Water Dragon Jutsu': [
+        { text: "A vortex of water rises and takes the shape of a ferocious dragon, which **{attacker}** sends roaring towards **{target}**!", weight: 1.0 }
+    ],
+    'Water Style: Water Prison Jutsu': [
+        { text: "**{attacker}** attempts to trap **{target}** in an inescapable sphere of water!", weight: 1.0 }
+    ],
+    'Wind Style: Vacuum Sphere Jutsu': [
+        { text: "**{attacker}** inhales deeply and then fires several piercing bullets of compressed air at **{target}**.", weight: 1.0 }
+    ],
+    'Wind Style: Tornado Barrier Jutsu': [
+        { text: "A swirling vortex of wind erupts around **{attacker}**, forming a barrier that deflects incoming attacks.", weight: 1.0 }
+    ],
+    'Earth Style: Earth Flow River Jutsu': [
+        { text: "The ground beneath **{target}** churns and liquifies into a raging river of mud at **{attacker}**'s command!", weight: 1.0 }
+    ],
+    'Earth Style: Stone Golem Jutsu': [
+        { text: "Drawing rock and earth from the ground, **{attacker}** summons a hulking golem to fight by their side.", weight: 1.0 }
+    ],
+    'Lightning Style: Lightning Hound Jutsu': [
+        { text: "**{attacker}** shapes raw lightning into the form of a hunting dog, which streaks across the field to attack **{target}**.", weight: 1.0 }
+    ],
+    'Lightning Style: Electromagnetic Barrier Jutsu': [
+        { text: "**{attacker}** creates a crackling barrier of lightning that shocks anyone foolish enough to touch it.", weight: 1.0 }
+    ],
+    'Genjutsu: Temple of Nirvana': [
+        { text: "**{attacker}** casts a wide-ranging illusion, causing phantom feathers to rain from the sky, lulling **{target}** into a deep slumber.", weight: 1.0 }
+    ],
+    'Taijutsu: Leaf Hurricane': [
+        { text: "**{attacker}** unleashes the Leaf Hurricane, a devastating series of spinning kicks that batters **{target}** from all sides!", weight: 1.0 }
+    ],
+
+    // --- Default Fallback ---
+    'default': [
+        { text: "**{attacker}** uses **{action}** against **{target}**!", weight: 1.0 }
+    ]
+};
+
+/**
+ * Defines the elemental strengths and weaknesses.
+ * The key is strong against the value.
+ */
+export const ELEMENTAL_RELATIONSHIPS = {
+    'Fire': 'Wind',      // Fire is strong against Wind (fans the flames)
+    'Wind': 'Lightning', // Wind is strong against Lightning (acts as an insulator)
+    'Lightning': 'Earth',// Lightning is strong against Earth (courses through it)
+    'Earth': 'Water',    // Earth is strong against Water (dams and contains it)
+    'Water': 'Fire'      // Water is strong against Fire (extinguishes it)
+};
 
 // --- JUTSU LIBRARY ---
 
@@ -392,8 +611,9 @@ export const JUTSU_LIBRARY = {
     'Substitution Jutsu': {
         name: 'Substitution Jutsu', rank: 'E', type: 'Counter', chakraCost: 10, staminaCost: 5, basePower: 0, // MODIFIED: type is now Counter
         tags: {
+            keywords: ['Reaction-Only'],
             element: 'Non-Elemental', effect: 'Evasion', range: 'Short', complexity: 'Simple',
-            validRanges: ['Engaged', 'Short', 'Mid'],
+            validRanges: ['Short', 'Mid', 'Long'],
         },
         effect: { rangeChange: 'Mid' }
     },
@@ -441,6 +661,29 @@ export const JUTSU_LIBRARY = {
             // This jutsu's effect is handled with special logic in executeAction
         }
     },
+    // --- Innate Reactions ---
+
+        'Block': {
+        name: 'Block', rank: 'E', type: 'Defensive', chakraCost: 0, staminaCost: 10, basePower: 0,
+        tags: {
+            category: 'Innate', 
+            element: 'Non-Elemental', effect: 'Damage_Reduction', range: 'Melee', complexity: 'None',
+            keywords: ['Reaction-Only'], 
+            validRanges: ['Engaged'],
+        }
+    },
+    'Dodge': {
+        name: 'Dodge', rank: 'E', type: 'Defensive', chakraCost: 0, staminaCost: 8, basePower: 0,
+        tags: {
+            category: 'Innate', 
+            element: 'Non-Elemental', effect: 'Evasion', range: 'Melee', complexity: 'None',
+            keywords: ['Reaction-Only'], 
+            validRanges: ['Engaged'],
+        },
+                effect: {
+            reposition: { newRange: 'Short', chance: 0.40 }
+    }
+},
 'Transformation Jutsu': {
     name: 'Transformation Jutsu', rank: 'E', type: 'Supplementary', chakraCost: 5, staminaCost: 0, basePower: 0,
     tags: {
@@ -487,6 +730,7 @@ export const JUTSU_LIBRARY = {
     name: 'Set Paper Bomb Trap', rank: 'D', type: 'Supplementary', chakraCost: 5, staminaCost: 5, basePower: 0,
     requiresItem: { id: 'paper_bomb' },
     tags: {
+        category: 'Tool',
         element: 'Non-Elemental', effect: 'Trap', range: 'Personal', complexity: 'Simple',
         validRanges: [ 'Mid', 'Long'],
     },
@@ -1065,8 +1309,8 @@ export const TRAIT_POOL = [
 export const FAMILY_BACKGROUNDS = [
     { name: "Civilian Family", chance: 0.60, statInfluence: 0.0, kgModifier: 0.001, narrative: "Parents work normal jobs... Your path will be your own." },
     { name: "Minor Ninja Family", chance: 0.25, statInfluence: 0.05, kgModifier: 0.01, narrative: "At least one parent served as a Chunin..." },
-    { name: "Established Ninja Clan", chance: 0.10, statInfluence: 0.10, kgModifier: 0.05, narrative: "Born into a recognized clan, you carry the weight of expectation..." },
-    { name: "Legendary Heritage", chance: 0.05, statInfluence: 0.15, kgModifier: 0.15, narrative: "Whispers of ancient power follow you..." }
+    { name: "Established Ninja Clan", chance: 0.10, statInfluence: 0.10, kgModifier: 0.25, narrative: "Born into a recognized clan, you carry the weight of expectation..." },
+    { name: "Legendary Heritage", chance: 0.05, statInfluence: 0.15, kgModifier: 1.0, narrative: "Whispers of ancient power follow you..." }
 ];
 
 // --- Shinobi Career Progression System Data ---
