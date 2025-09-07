@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shinobi's Vow: Cycle of the Lone Shadow</title>
     <link rel="stylesheet" href="style.css">
-        <style>
+    <!-- ADD CHART.JS LIBRARY -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
         .inventory-item {
             padding: 10px;
             margin-bottom: 8px;
@@ -28,7 +30,6 @@
 </head>
 <body>
     <div id="game-container">
-        <!-- ... (rest of the body is unchanged) ... -->
         <header id="game-header">
             <h1>Shinobi's Vow: Cycle of the Lone Shadow</h1>
             <p id="game-subtitle">A Longform Roguelite Text RPG</p>
@@ -75,9 +76,33 @@
             </div>
             <h3>Vitals</h3>
             <div class="status-group vitals">
-                <p>Health: <span id="char-health">100</span>/<span id="char-max-health">100</span></p>
-                <p>Chakra: <span id="char-chakra">100</span>/<span id="char-max-chakra">100</span></p>
-                <p>Stamina: <span id="char-stamina">100</span>/<span id="char-max-stamina">100</span></p>
+                <div class="vital-bar-group">
+                    <div class="vital-bar-label">
+                        <span>Health</span>
+                        <span><span id="char-health">100</span>/<span id="char-max-health">100</span></span>
+                    </div>
+                    <div class="progress-bar-container vital-bar">
+                        <div id="health-bar" class="progress-bar health"></div>
+                    </div>
+                </div>
+                <div class="vital-bar-group">
+                    <div class="vital-bar-label">
+                        <span>Chakra</span>
+                        <span><span id="char-chakra">100</span>/<span id="char-max-chakra">100</span></span>
+                    </div>
+                    <div class="progress-bar-container vital-bar">
+                        <div id="chakra-bar" class="progress-bar chakra"></div>
+                    </div>
+                </div>
+                <div class="vital-bar-group">
+                    <div class="vital-bar-label">
+                        <span>Stamina</span>
+                        <span><span id="char-stamina">100</span>/<span id="char-max-stamina">100</span></span>
+                    </div>
+                    <div class="progress-bar-container vital-bar">
+                        <div id="stamina-bar" class="progress-bar stamina"></div>
+                    </div>
+                </div>
                 <p>Morale: <span id="char-morale">100</span></p>
             </div>
             <h3>Conditions</h3>
@@ -96,7 +121,6 @@
                 <p><strong>Traits:</strong> <span id="char-traits">None</span></p>
                 <p><strong>Ryo:</strong> <span id="char-ryo">0</span></p> 
             </div>
-             <!-- Team Roster Section -->
             <h3>Team Roster</h3>
             <div id="team-roster-section" class="status-group team-display" style="display: none;">
                 <p><strong>Sensei:</strong> <span id="team-sensei-name">N/A</span></p>
@@ -112,12 +136,61 @@
         <section id="game-area">
             <nav id="main-tabs">
                 <button class="tab-button active" data-tab="log-panel">Log</button>
+                <button class="tab-button" data-tab="dossier-panel">Dossier</button>
                 <button class="tab-button" data-tab="skills-panel">Skills</button>
                 <button class="tab-button" data-tab="jutsu-panel">Jutsu</button>
                 <button class="tab-button" data-tab="inventory-panel">Inventory</button>
             </nav>
             <div id="log-panel" class="tab-content active">
                 <div id="narrative-log"></div>
+            </div>
+            <!-- NEW DOSSIER PANEL -->
+            <div id="dossier-panel" class="tab-content">
+                <div class="dossier-header">
+                    <span id="dossier-village-crest" class="dossier-village-crest">?</span>
+                    <span id="dossier-village-name">Village Name</span>
+                </div>
+                <div class="dossier-main-content">
+                    <div class="dossier-left-col">
+                        <div class="dossier-portrait"></div>
+                        <h2 id="dossier-char-name">Surname - Name</h2>
+                        <div class="dossier-details">
+                             <p><strong>Rank:</strong> <span id="dossier-rank">Genin</span></p>
+                            <p><strong>Speciality:</strong> <span id="dossier-speciality">N/A</span></p>
+                            <p><strong>Status:</strong> <span id="dossier-status">Active</span></p>
+                        </div>
+                         <h3>Team</h3>
+                        <div class="dossier-team">
+                            <div class="dossier-teammate">
+                                <div class="dossier-teammate-portrait">?</div>
+                                <span id="dossier-team1-name">Teammate 1</span>
+                            </div>
+                            <div class="dossier-teammate">
+                                <div class="dossier-teammate-portrait">?</div>
+                                <span id="dossier-team2-name">Teammate 2</span>
+                            </div>
+                            <div class="dossier-teammate">
+                                <div class="dossier-teammate-portrait sensei">S</div>
+                                <span id="dossier-sensei-name">Sensei</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="dossier-right-col">
+                        <div class="dossier-chart-container">
+                            <canvas id="dossier-radar-chart"></canvas>
+                        </div>
+                        <div class="dossier-missions">
+                            <h3>Mission Record</h3>
+                            <ul>
+                                <li>S-Rank: <span id="dossier-missions-s">0</span></li>
+                                <li>A-Rank: <span id="dossier-missions-a">0</span></li>
+                                <li>B-Rank: <span id="dossier-missions-b">0</span></li>
+                                <li>C-Rank: <span id="dossier-missions-c">0</span></li>
+                                <li>D-Rank: <span id="dossier-missions-d">0</span></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div id="skills-panel" class="tab-content"></div>
             <div id="jutsu-panel" class="tab-content"></div>
@@ -128,8 +201,8 @@
         </section>
     </div>
 
-    <!-- CORRECTED SCRIPT TAGS WITH type="module" -->
     <script type="module" src="constants.js"></script>
+    <script type="module" src="npc_generation.js"></script>
     <script type="module" src="skills.js"></script>
     <script type="module" src="ui.js"></script>
     <script type="module" src="inventory.js"></script> 

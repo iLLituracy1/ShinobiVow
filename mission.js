@@ -1,6 +1,6 @@
 // mission.js - Handles all mission logic for Shinobi's Vow
 
-import { updateTimeControlsUI, clearActionButtons, addToNarrative, addActionButton, showVillageMenu, updateUI } from './ui.js';
+import { updateTimeControlsUI, clearActionButtons, addToNarrative, addActionButton, showVillageMenu, updateUI, hideTimeControls, showTimeControls } from './ui.js';
 import { checkInventory, removeItemFromInventory } from './inventory.js';
 import { MISSIONS, MISSION_PLANS, PERSONAL_CONTRIBUTIONS, COMMAND_TIERS, OPPONENT_LIBRARY } from './constants.js';
 import { addXp } from './skills.js';
@@ -52,7 +52,7 @@ function assignMissionRoles(roster, requiredRoles) {
 }
 
 export function checkForMissionAssignment() {
-    const MISSION_CHANCE_PER_DAY = 0.05;
+    const MISSION_CHANCE_PER_DAY = 0.04;
     if (Math.random() < MISSION_CHANCE_PER_DAY) {
         assignMission();
     }
@@ -60,13 +60,39 @@ export function checkForMissionAssignment() {
 
 function assignMission() {
     const char = gameState.character;
-    const availableMissions = MISSIONS['D-Rank'];
-    if (!availableMissions || availableMissions.length === 0) {
-        console.error("No D-Rank missions available.");
+    const availableMissions = [];
+    let chosenRank = 'D-Rank';
+
+    // All Genin can be assigned D-Rank missions.
+    availableMissions.push(...MISSIONS['D-Rank']);
+
+    // Condition for unlocking C-Rank missions:
+    // Being an "Experienced Genin" as per your tables.
+    const totalAttributes = Object.values(char.currentStats).reduce((sum, stat) => sum + stat, 0);
+    const highestCombatSkill = Math.max(
+        getCharacterSkillValue(char, 'Taijutsu'),
+        getCharacterSkillValue(char, 'Shurikenjutsu'),
+        getCharacterSkillValue(char, 'Genjutsu')
+        // We can add elemental schools here later
+    );
+
+    if (totalAttributes > 320 && highestCombatSkill > 15) {
+        availableMissions.push(...MISSIONS['C-Rank']);
+    }
+
+    if (availableMissions.length === 0) {
+        console.error("No missions available for the character's level.");
         return;
     }
 
     const missionData = JSON.parse(JSON.stringify(availableMissions[Math.floor(Math.random() * availableMissions.length)]));
+    
+    // Determine the mission's rank from its name for logging
+    const rankMatch = missionData.name.match(/\((D-Rank|C-Rank)\)/);
+    if(rankMatch) {
+        chosenRank = rankMatch[1];
+    }
+
     missionData.progress = 0;
     missionData.duration = Math.floor(Math.random() * (missionData.durationInDays[1] - missionData.durationInDays[0] + 1)) + missionData.durationInDays[0];
     missionData.triggeredEventIndices = []; 
@@ -75,7 +101,7 @@ function assignMission() {
 
     changeGameSpeed(1);
     addToNarrative(`**MISSION ASSIGNED!** A runner from the mission desk hands you a scroll.`, "event-message");
-    addToNarrative(`**${missionData.name} (D-Rank):** ${missionData.description}`, "system-message");
+    addToNarrative(`**${missionData.name}:** ${missionData.description}`, "system-message");
 
     const roster = [
         char, 
@@ -96,6 +122,8 @@ async function triggerMissionBriefing(leader) {
     gameState.time.isPaused = true;
     updateTimeControlsUI();
     clearActionButtons();
+    hideTimeControls(); // <-- HIDE time controls when briefing starts
+
     const delay = (ms) => new Promise(res => setTimeout(res, ms));
 
     await delay(2000);
@@ -137,7 +165,8 @@ async function triggerMissionBriefing(leader) {
             
             clearActionButtons();
             char.currentActivity = `On Mission: ${char.currentMission.name}`;
-            gameState.time.isPaused = false;
+            showTimeControls(); // <-- RESTORE time controls on choice
+            changeGameSpeed(1); // Set speed to 1x and unpause
             updateUI();
         }, "game-button");
     });
@@ -149,6 +178,38 @@ function resolveMissionEvent(event) {
 
     addToNarrative(event.narrative, "event-message warning");
 
+    // *** THE FIX: Handle events that might not have a skill check ***
+    // If there is no .check property, it's a direct narrative or combat event.
+    if (!event.check) {
+        if (event.triggersCombat) {
+            const opponentsToSpawn = [];
+            event.triggersCombat.opponents.forEach(opponentInfo => {
+                let opponentData;
+                let chosenArchetype = opponentInfo.archetype;
+                if (chosenArchetype === 'random') {
+                    chosenArchetype = ARCHETYPE_LIST[Math.floor(Math.random() * ARCHETYPE_LIST.length)];
+                }
+                if (typeof opponentInfo === 'string') {
+                    opponentData = OPPONENT_LIBRARY[opponentInfo];
+                } else if (typeof opponentInfo === 'object') {
+                    opponentData = generateShinobi(opponentInfo.rank, chosenArchetype);
+                }
+                if (opponentData) opponentsToSpawn.push(JSON.parse(JSON.stringify(opponentData)));
+            });
+
+            const onCombatEnd = (victory) => {
+                // For a final encounter that is direct combat, victory means mission success.
+                completeMission(victory);
+            };
+
+            startCombat(opponentsToSpawn, onCombatEnd);
+            return 'COMBAT_STARTED';
+        }
+        // If there's no check AND no combat, it's a simple narrative event.
+        return true;
+    }
+
+    // --- Original logic for events that DO have a skill check ---
     const skillValue = getCharacterSkillValue(char, event.check.skill);
     let finalSkillValue = skillValue;
 
@@ -156,7 +217,7 @@ function resolveMissionEvent(event) {
     if (plan && plan.tags) {
         const bonusSkill = plan.tags.bonus;
         const penaltySkill = plan.tags.penalty;
-        const MODIFIER = 10; 
+        const MODIFIER = 10;
 
         if (bonusSkill === event.check.skill) {
             finalSkillValue += MODIFIER;
@@ -171,16 +232,44 @@ function resolveMissionEvent(event) {
 
     if (success) {
         addToNarrative(event.success.narrative, "system-message success");
+        
+        // Handle success cases that can still trigger combat (e.g., apprehending a scout)
+        if (event.success.triggersCombat) {
+             const opponentsToSpawn = [];
+            event.success.triggersCombat.opponents.forEach(opponentInfo => {
+                let opponentData;
+                let chosenArchetype = opponentInfo.archetype;
+                if (chosenArchetype === 'random') {
+                    chosenArchetype = ARCHETYPE_LIST[Math.floor(Math.random() * ARCHETYPE_LIST.length)];
+                }
+                 if (typeof opponentInfo === 'string') {
+                    opponentData = OPPONENT_LIBRARY[opponentInfo];
+                } else if (typeof opponentInfo === 'object') {
+                    opponentData = generateShinobi(opponentInfo.rank, chosenArchetype);
+                }
+                if (opponentData) opponentsToSpawn.push(JSON.parse(JSON.stringify(opponentData)));
+            });
+            
+            const onCombatEnd = (victory) => {
+                // If you win this fight, the mission continues successfully. If you lose, it's a failure.
+                if(!victory) {
+                    completeMission(false);
+                }
+            };
+            startCombat(opponentsToSpawn, onCombatEnd);
+            return 'COMBAT_STARTED';
+        }
+
         return true;
     }
 
     addToNarrative(event.failure.narrative, "system-message error");
-    
+
     if (event.failure.potentialInjuries) {
         for (const injuryInfo of event.failure.potentialInjuries) {
             if (Math.random() < injuryInfo.chance) {
                 applyInjury(injuryInfo.id);
-                break; 
+                break;
             }
         }
     }
@@ -201,15 +290,12 @@ function resolveMissionEvent(event) {
             if (opponentData) opponentsToSpawn.push(JSON.parse(JSON.stringify(opponentData)));
         });
         
-        // *** THE NEW, DECOUPLED CALLBACK ***
         const onCombatEnd = (victory) => {
-            // This function's ONLY job is to determine the mission outcome.
-            // It does NOT touch the game loop or character state.
             if (victory) {
-                addToNarrative("You defeated the rogue shinobi, but the target, Tora, escaped in the chaos.", "system-message");
+                addToNarrative("You defeated the immediate threat, but the mission objective was compromised in the chaos.", "system-message");
                 completeMission(false);
             } else {
-                completeMission(false); 
+                completeMission(false);
             }
         };
 

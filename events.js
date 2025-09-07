@@ -1,6 +1,6 @@
 // events.js - Event handling and activity logic for Shinobi's Vow
 
-import { addXp } from './skills.js';
+import { addXp, unlockJutsu } from './skills.js';
 import { addToNarrative, updateUI } from './ui.js';
 import { recalculateVitals } from './character.js';
 import { 
@@ -13,7 +13,7 @@ import {
     GENIN_TAIJUTSU_EVENTS, GENIN_SHURIKENJUTSU_EVENTS, GENIN_CHAKRA_CONTROL_EVENTS,
     // Genin Narrative
     TEAM_SPARRING_EVENTS, FORMATION_DRILL_EVENTS, BUILD_BONDS_EVENTS, ELEMENTAL_TRAINING_EVENTS, ADVANCED_JUTSU_RESEARCH_EVENTS,
-    AFFINITY_DISCOVERY_CHANCE_PER_MINUTE, KEKKEI_GENKAI_DISCOVERY_CHANCE_PER_DAY, KEKKEI_GENKAI_AWAKENING_THRESHOLDS
+    AFFINITY_DISCOVERY_CHANCE_PER_MINUTE, KEKKEI_GENKAI_DISCOVERY_CHANCE_PER_DAY, KEKKEI_GENKAI_AWAKENING_THRESHOLDS, JUTSU_DISCOVERY_EVENTS
 } from './constants.js';
 
 
@@ -414,6 +414,61 @@ function triggerDirectiveNarrativeEvent() {
     }
 }
 
+/**
+ * A low-chance check to see if the character discovers a new Jutsu
+ * through their current training directive.
+ * @returns {boolean} - True if a discovery event was triggered, false otherwise.
+ */
+function checkForJutsuDiscovery() {
+    const JUTSU_DISCOVERY_CHANCE = 0.03; // 3% chance on a day that an event fires
+    if (Math.random() > JUTSU_DISCOVERY_CHANCE) {
+        return false;
+    }
+
+    const char = gameState.character;
+    const directive = char.currentDirective;
+    if (!directive || directive.type !== 'SKILL') {
+        return false;
+    }
+
+    let discoveryContext = null;
+    // Define which directives can lead to which kind of discovery
+    if (['Team Sparring', 'Formation Drills'].includes(directive.skillName)) {
+        discoveryContext = 'SenseiTeaching';
+    } else if (directive.skillName === 'Advanced Jutsu Research') {
+        discoveryContext = 'ScrollResearch';
+    }
+
+    if (discoveryContext) {
+        const discoveryEvent = JUTSU_DISCOVERY_EVENTS[0]; // There's only one for now
+        const outcome = discoveryEvent.resolve(char, discoveryContext);
+
+        if (outcome) {
+            addToNarrative(`**${discoveryEvent.name}:**`, "event-message", 1000);
+            addToNarrative(outcome.narrative, outcome.cssClass || "system-message", 500);
+
+            if (outcome.isJutsuDiscovery && outcome.jutsuNameToUnlock) {
+                if (unlockJutsu(char, outcome.jutsuNameToUnlock)) {
+                    updateUI(); // Update Jutsu tab immediately
+                }
+            }
+            if (outcome.xpGain) {
+                const { group, skill, amount } = outcome.xpGain;
+                addXp(char.skills[group][skill], amount, skill);
+            }
+            if (outcome.moraleChange) {
+                char.morale = Math.min(100, Math.max(0, char.morale + outcome.moraleChange));
+            }
+            
+            recalculateVitals();
+            updateUI();
+            return true; // A discovery event happened
+        }
+    }
+
+    return false; // No discovery event was triggered
+}
+
 export function handleDowntimeDailyCycle() {
     const char = gameState.character;
     
@@ -425,7 +480,12 @@ export function handleDowntimeDailyCycle() {
     // Add KG check for academy students and Genin
     checkForSpontaneousKGAwakening(char);
 
+    // DAILY NARRATIVE EVENT CHANCE
     if (Math.random() < 0.25) { 
-       triggerDirectiveNarrativeEvent();
+       // Attempt a rare Jutsu discovery first. If it succeeds, it returns true and we skip the normal event.
+       // If it fails (returns false), we proceed to trigger a regular narrative event.
+       if (!checkForJutsuDiscovery()) {
+           triggerDirectiveNarrativeEvent();
+       }
     }
 }

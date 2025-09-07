@@ -6,6 +6,30 @@ export const calculateXpToNext = (baseXp, level) => {
     return Math.floor(baseXp * Math.pow(level + 1, 1.8));
 };
 
+/**
+ * Unlocks a new jutsu for the character, adding it to their skill list at level 0.
+ * @param {object} character - The character object.
+ * @param {string} jutsuName - The name of the jutsu to unlock from JUTSU_LIBRARY.
+ * @returns {boolean} - True if the jutsu was successfully unlocked, false if it was already known.
+ */
+export function unlockJutsu(character, jutsuName) {
+    if (character.skills.jutsu[jutsuName]) {
+        console.warn(`Character already knows ${jutsuName}.`);
+        return false;
+    }
+
+    const baseCost = SKILL_CATEGORY_COSTS.jutsu;
+    character.skills.jutsu[jutsuName] = {
+        level: 0,
+        xp: 0,
+        xpToNext: calculateXpToNext(baseCost, 0),
+        baseCost: baseCost
+    };
+    
+    console.log(`${jutsuName} unlocked for character.`);
+    return true;
+}
+
 export function initializeSkills(character) {
     if (character.skills) {
         console.warn("Character already has skills initialized. Aborting.");

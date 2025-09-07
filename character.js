@@ -294,18 +294,21 @@ export function recalculateVitals() {
 export function getCharacterSkillValue(character, skillOrStatName) {
     // Check stats first (case-insensitive for robustness)
     const statName = skillOrStatName.toLowerCase();
-    // *** Use currentStats ***
-    if (character.currentStats[statName] !== undefined) {
+    // *** Use currentStats, but only if it exists on the character object ***
+    if (character.currentStats && character.currentStats[statName] !== undefined) {
         return character.currentStats[statName];
     }
 
-    // Check skills
-    for (const category in character.skills) {
-        if (character.skills[category][skillOrStatName]) {
-            return character.skills[category][skillOrStatName].level;
+    // *** Check skills, but only if it exists on the character object ***
+    if (character.skills) {
+        for (const category in character.skills) {
+            if (character.skills[category] && character.skills[category][skillOrStatName]) {
+                return character.skills[category][skillOrStatName].level;
+            }
         }
     }
     
-    console.warn(`Could not find skill or stat named: ${skillOrStatName}`);
+    // If the skill/stat wasn't found (which is expected for simplified NPCs), return 0.
+    // Removing the console.warn as this is now an expected behavior.
     return 0;
 }

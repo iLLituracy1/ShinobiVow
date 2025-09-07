@@ -425,6 +425,11 @@ export const ACTION_NARRATIVES = {
         { text: "**{attacker}** ducks under the punch, the attack whistling past their ear!", weight: 1.0 },
         { text: "With a burst of agility, **{attacker}** sways aside, narrowly dodging **{target}**'s attack.", weight: 1.0 }
     ],
+        'Kunai Stab': [
+        { text: "Exploiting the opening, **{attacker}** drives their kunai home with a vicious, close-quarters stab at **{target}**!", weight: 1.0 },
+        { text: "With a flash of steel, **{attacker}** makes a brutal, punishing strike against the trapped **{target}**!", weight: 0.8 },
+        { text: "Locked in close, **{attacker}** draws their blade and thrusts it towards **{target}**'s vitals!", weight: 0.7 }
+    ],
 
     // --- D-Rank Jutsu ---
     'Heavy Strike': [
@@ -584,6 +589,8 @@ export const ELEMENTAL_RELATIONSHIPS = {
     'Water': 'Fire'      // Water is strong against Fire (extinguishes it)
 };
 
+
+
 // --- JUTSU LIBRARY ---
 
 /**
@@ -592,83 +599,93 @@ export const ELEMENTAL_RELATIONSHIPS = {
  */
 export const JUTSU_LIBRARY = {
     // --- E-Rank: Core Tactical Actions ---
-    'Strike': {
-        name: 'Strike', rank: 'E', type: 'Offensive', chakraCost: 0, staminaCost: 5, basePower: 15,
-        tags: {
-            category: 'Taijutsu',
-            element: 'Non-Elemental', effect: 'Standard', range: 'Melee', complexity: 'None',
-            validRanges: ['Engaged'],
-        },
-        effect: { rangeChange: null }
+'Strike': {
+    name: 'Strike', rank: 'E', type: 'Offensive', chakraCost: 0, staminaCost: 5, basePower: 15,
+    tags: {
+        category: 'Taijutsu',
+        element: 'Non-Elemental', effect: 'Standard', range: 'Melee', complexity: 'None',
+        keywords: ['Innate'],
+        validRanges: ['Engaged'],
     },
+    effect: { 
+        rangeChange: null,
+        check: { // HIT CHECK
+            type: 'Contested',
+            attacker: { base: ['stat:agility', 'skill:Taijutsu'], multiplier: 1.0 },
+            defender: { base: ['stat:agility', 'skill:Taijutsu'], multiplier: 1.0 }
+        }
+    }
+},
     'Guard': {
         name: 'Guard', rank: 'E', type: 'Defensive', chakraCost: 0, staminaCost: 5, basePower: 0,
         tags: {
             element: 'Non-Elemental', effect: 'PostureReinforce', range: 'Personal', complexity: 'None',
+            keywords: ['Innate'],
             validRanges: ['Engaged', 'Short', 'Mid', 'Long'], effect: { rangeChange: null }
         }
     },
-    'Substitution Jutsu': {
-        name: 'Substitution Jutsu', rank: 'E', type: 'Counter', chakraCost: 10, staminaCost: 5, basePower: 0, // MODIFIED: type is now Counter
-        tags: {
-            keywords: ['Reaction-Only'],
-            element: 'Non-Elemental', effect: 'Evasion', range: 'Short', complexity: 'Simple',
-            validRanges: ['Short', 'Mid', 'Long'],
+        'Substitution Jutsu': {
+            name: 'Substitution Jutsu', rank: 'E', type: 'Counter', chakraCost: 10, staminaCost: 5, basePower: 0,
+            tags: {
+                keywords: ['Reaction-Only'],
+                element: 'Non-Elemental', effect: 'Evasion', range: 'Short', complexity: 'Simple',
+                validRanges: ['Short', 'Mid', 'Long'],
+            },
+            effect: { rangeChange: 'Mid' }
         },
-        effect: { rangeChange: 'Mid' }
-    },
     'Create Distance': {
         name: 'Create Distance', rank: 'E', type: 'Supplementary', chakraCost: 0, staminaCost: 10, basePower: 0,
         tags: {
             element: 'Non-Elemental', effect: 'Evasion', range: 'Personal', complexity: 'None',
+            keywords: ['Innate'],
             validRanges: ['Engaged'],
         },
         effect: { rangeChange: 'Short' }
     },
-'Dash': {
-    name: 'Dash', rank: 'E', type: 'Supplementary', chakraCost: 0, staminaCost: 8, basePower: 0,
-    tags: {
-        element: 'Non-Elemental', effect: 'Movement', range: 'Short', complexity: 'None',
-        validRanges: [ 'Mid', 'Long' ] 
+    'Dash': {
+        name: 'Dash', rank: 'E', type: 'Supplementary', chakraCost: 0, staminaCost: 8, basePower: 0,
+        tags: {
+            element: 'Non-Elemental', effect: 'Movement', range: 'Short', complexity: 'None',
+            keywords: ['Innate'],
+            validRanges: [ 'Mid', 'Long' ] 
+        },
+        effect: { rangeChange: 'Engaged' } 
     },
-    effect: { rangeChange: 'Engaged' } 
-},
-'Clone Jutsu': {
-    name: 'Clone Jutsu', rank: 'E', type: 'Supplementary', chakraCost: 5, staminaCost: 0, basePower: 0,
-    tags: {
-        element: 'Non-Elemental', effect: 'Illusion', range: 'Personal', complexity: 'Simple',
-        validRanges: ['Engaged', 'Short', 'Mid', 'Long'],
-    },
-    effect: {
-        rangeChange: null,
-        // --- MODIFICATION: Clones are now a self-applied tag with ownership ---
-        // This is no longer a battlefieldEffect. It's a personal buff/setup.
-        appliesTag: { 
-            name: 'Setup: Clones_Active', 
-            chance: 1.0, 
-            duration: 10 // Duration is now part of the tag
+    'Clone Jutsu': {
+        name: 'Clone Jutsu', rank: 'E', type: 'Supplementary', chakraCost: 5, staminaCost: 0, basePower: 0,
+        tags: {
+            element: 'Non-Elemental', effect: 'Illusion', range: 'Personal', complexity: 'Simple',
+            validRanges: ['Short', 'Mid', 'Long'],
+        },
+        effect: {
+            rangeChange: null,
+            appliesTag: { 
+                name: 'Setup: Clones_Active', 
+                duration: 10
+            },
+            check: {
+                type: 'Contested',
+                attacker: { base: ['stat:intellect', 'skill:Clone Jutsu'], multiplier: 1.0 },
+                defender: { base: ['stat:perception'], multiplier: 1.0 }
+            }
         }
-    }
-},
+    },
     'Attempt to Escape Grapple': {
         name: 'Attempt to Escape Grapple', rank: 'E', type: 'Supplementary', chakraCost: 0, staminaCost: 10, basePower: 0,
         tags: {
             category: 'Taijutsu',
             element: 'Non-Elemental', effect: 'Escape_Grapple', range: 'Melee', complexity: 'None',
-            validRanges: ['Engaged'], // Can only be used while grappled, which is always 'Engaged'
+            keywords: ['Innate'],
+            validRanges: ['Engaged'], 
         },
-        effect: { 
-            // This jutsu's effect is handled with special logic in executeAction
-        }
+        effect: {}
     },
-    // --- Innate Reactions ---
-
-        'Block': {
+    'Block': {
         name: 'Block', rank: 'E', type: 'Defensive', chakraCost: 0, staminaCost: 10, basePower: 0,
         tags: {
             category: 'Innate', 
             element: 'Non-Elemental', effect: 'Damage_Reduction', range: 'Melee', complexity: 'None',
-            keywords: ['Reaction-Only'], 
+            keywords: ['Reaction-Only', 'Innate'], 
             validRanges: ['Engaged'],
         }
     },
@@ -677,79 +694,104 @@ export const JUTSU_LIBRARY = {
         tags: {
             category: 'Innate', 
             element: 'Non-Elemental', effect: 'Evasion', range: 'Melee', complexity: 'None',
-            keywords: ['Reaction-Only'], 
+            keywords: ['Reaction-Only', 'Innate'], 
             validRanges: ['Engaged'],
         },
-                effect: {
+        effect: {
             reposition: { newRange: 'Short', chance: 0.40 }
-    }
-},
-'Transformation Jutsu': {
-    name: 'Transformation Jutsu', rank: 'E', type: 'Supplementary', chakraCost: 5, staminaCost: 0, basePower: 0,
-    tags: {
-        element: 'Non-Elemental', effect: 'Deception', range: 'Personal', complexity: 'Simple', // MODIFIED: New 'Deception' effect tag
-        validRanges: ['Engaged', 'Short', 'Mid', 'Long'],
+        }
     },
-    effect: {
-        // MODIFICATION: The effect is now a check, not a guaranteed tag.
-        check: { type: 'PerceptionIntellect', difficulty: 35 } // Base difficulty to see through the initial cast.
-    }
-},
-
+    'Transformation Jutsu': {
+        name: 'Transformation Jutsu', rank: 'E', type: 'Supplementary', chakraCost: 5, staminaCost: 0, basePower: 0,
+        tags: {
+            element: 'Non-Elemental', effect: 'Deception', range: 'Personal', complexity: 'Simple',
+            validRanges: ['Short', 'Mid', 'Long'],
+        },
+        effect: {
+            check: { 
+                type: 'Contested',
+                attacker: { base: ['stat:intellect', 'skill:ChakraControl', 'skill:Transformation Jutsu'], multiplier: 1.0 },
+                defender: { base: ['stat:perception', 'stat:intellect'], multiplier: 1.0 }
+            }
+        }
+    },
     'Analyze': {
         name: 'Analyze', rank: 'E', type: 'Supplementary', chakraCost: 0, staminaCost: 5, basePower: 0,
         tags: {
             category: 'Tactical',
             element: 'Non-Elemental', effect: 'Information_Gathering', range: 'All', complexity: 'None',
+            keywords: ['Innate'],
             validRanges: ['Engaged', 'Short', 'Mid', 'Long'],
         },
-        effect: { 
-            // Effect is handled with special logic in executeAction
+        effect: {}
+    },
+    'Throw Kunai': {
+        name: 'Throw Kunai', rank: 'E', type: 'Offensive', chakraCost: 0, staminaCost: 3, basePower: 12,
+        requiresItem: { id: 'kunai' },
+        tags: {
+            category: 'Tool',
+            element: 'Non-Elemental', effect: 'Projectile', range: 'Short', complexity: 'None',
+            keywords: ['Innate'],
+            validRanges: ['Short', 'Mid'],
+        },
+        effect: {
+            check: { // HIT CHECK
+                type: 'Contested',
+                attacker: { base: ['stat:perception', 'skill:Shurikenjutsu'], multiplier: 1.0 },
+                defender: { base: ['stat:agility', 'stat:perception'], multiplier: 1.0 }
+            }
         }
     },
-    // --- E-Rank: Tool-Based Actions ---
-'Throw Kunai': {
-    name: 'Throw Kunai', rank: 'E', type: 'Offensive', chakraCost: 0, staminaCost: 3, basePower: 12,
-    requiresItem: { id: 'kunai' }, // This action requires a kunai
-    tags: {
-        category: 'Tool',
-        element: 'Non-Elemental', effect: 'Projectile', range: 'Short', complexity: 'None',
-        validRanges: ['Short', 'Mid'],
+    'Throw Shuriken': {
+        name: 'Throw Shuriken', rank: 'E', type: 'Offensive', chakraCost: 0, staminaCost: 2, basePower: 9,
+        requiresItem: { id: 'shuriken' },
+        tags: {
+            category: 'Tool',
+            element: 'Non-Elemental', effect: 'Projectile', range: 'Short', complexity: 'None',
+            keywords: ['Innate'],
+            validRanges: ['Short', 'Mid'],
+        },
+        effect: {
+            check: { // HIT CHECK
+                type: 'Contested',
+                attacker: { base: ['stat:perception', 'skill:Shurikenjutsu'], multiplier: 1.0 },
+                defender: { base: ['stat:agility', 'stat:perception'], multiplier: 1.0 }
+            }
+        }
     },
-},
-'Throw Shuriken': {
-    name: 'Throw Shuriken', rank: 'E', type: 'Offensive', chakraCost: 0, staminaCost: 2, basePower: 9,
-    requiresItem: { id: 'shuriken' }, // This action requires a shuriken
-    tags: {
-        category: 'Tool',
-        element: 'Non-Elemental', effect: 'Projectile', range: 'Short', complexity: 'None',
-        validRanges: ['Short', 'Mid'],
+    'Set Paper Bomb Trap': {
+        name: 'Set Paper Bomb Trap', rank: 'D', type: 'Supplementary', chakraCost: 5, staminaCost: 5, basePower: 0,
+        requiresItem: { id: 'paper_bomb' },
+        tags: {
+            category: 'Tool',
+            element: 'Non-Elemental', effect: 'Trap', range: 'Personal', complexity: 'Simple',
+            keywords: ['Innate'],
+            validRanges: [ 'Mid', 'Long'],
+        },
+        effect: {
+            appliesTag: { name: 'Setup: Trap_Ready', duration: 4, power: 75 }
+        }
     },
-},
-'Set Paper Bomb Trap': {
-    name: 'Set Paper Bomb Trap', rank: 'D', type: 'Supplementary', chakraCost: 5, staminaCost: 5, basePower: 0,
-    requiresItem: { id: 'paper_bomb' },
-    tags: {
-        category: 'Tool',
-        element: 'Non-Elemental', effect: 'Trap', range: 'Personal', complexity: 'Simple',
-        validRanges: [ 'Mid', 'Long'],
-    },
-    effect: {
-        // MODIFICATION: The tag is now more specific, indicating a setup is active.
-        appliesTag: { name: 'Setup: Trap_Ready', chance: 1.0, duration: 4, power: 75 }
-    }
-},
-
-    // --- D-Rank: Genin Fundamentals ---
     'Heavy Strike': {
         name: 'Heavy Strike', rank: 'D', type: 'Offensive', chakraCost: 0, staminaCost: 15, basePower: 25,
         tags: {
             category: 'Taijutsu',
             element: 'Non-Elemental', effect: 'StanceBreak', range: 'Melee', complexity: 'None', 
-            keywords: ['Powerful'],
-            validRanges: ['Engaged'], effect: { 
-                rangeChange: null,
-                appliesTag: { name: 'Launched', chance: 0.4, duration: 1 }
+            keywords: ['Powerful', 'Innate'],
+            validRanges: ['Engaged'], 
+        },
+        effect: { 
+            rangeChange: null,
+            appliesTag: { name: 'Launched', duration: 1 },
+            check: { // HIT CHECK
+                type: 'Contested',
+                attacker: { base: ['stat:agility', 'skill:Taijutsu'], multiplier: 0.9 }, // Less accurate due to power
+                defender: { base: ['stat:agility', 'skill:Taijutsu'], multiplier: 1.0 }
+            },
+            secondaryCheck: { // Stagger check (previously just 'check')
+                type: 'Contested',
+                attacker: { base: ['stat:strength', 'skill:Taijutsu'], multiplier: 1.0 },
+                defender: { base: ['stat:stamina'], multiplier: 1.0 }
             }
         }
     },
@@ -758,34 +800,57 @@ export const JUTSU_LIBRARY = {
         tags: {
             category: 'Taijutsu',
             element: 'Non-Elemental', effect: 'StanceBreak', range: 'Melee', complexity: 'None', 
-            keywords: ['Follow Up'],
+            keywords: ['Follow Up', 'Innate'],
             validRanges: ['Short'],
         },
         effect: { rangeChange: 'Engaged' }
     },
-        'Taijutsu: Takedown': {
+    'Taijutsu: Takedown': {
         name: 'Taijutsu: Takedown', rank: 'D', type: 'Offensive', chakraCost: 0, staminaCost: 20, basePower: 15,
         tags: {
             category: 'Taijutsu',
             element: 'Non-Elemental', effect: 'Grapple', range: 'Melee', complexity: 'None',
-            keywords: ['Control'],
+            keywords: ['Control', 'Innate'],
             validRanges: ['Engaged'],
         },
         effect: { 
             rangeChange: null,
-            appliesTag: { name: 'Grappled', chance: 0.7, duration: 3 } // 70% chance to apply Grappled for 3 ticks
+            appliesTag: { name: 'Grappled', duration: 3 },
+            check: {
+                type: 'Contested',
+                attacker: { base: ['stat:strength', 'skill:Taijutsu'], multiplier: 1.0 },
+                defender: { base: ['stat:agility', 'stat:strength'], multiplier: 0.9 }
+            }
+        }
+    },
+        'Kunai Stab': {
+        name: 'Kunai Stab', rank: 'D', type: 'Offensive', chakraCost: 0, staminaCost: 8, basePower: 30,
+        requiresItem: { id: 'kunai' },
+        tags: {
+            category: 'Tool',
+            element: 'Non-Elemental', effect: 'Standard', range: 'Melee', complexity: 'None',
+            keywords: ['Grapple Exploit', 'Innate'],
+            validRanges: ['Engaged'],
+        },
+        effect: {
+            check: { // HIT CHECK
+                type: 'Contested',
+                attacker: { base: ['stat:agility', 'skill:Shurikenjutsu'], multiplier: 1.5 }, // Extremely accurate on a grappled target
+                defender: { base: ['stat:agility'], multiplier: 0.2 }
+            }
         }
     },
     'Body Flicker Technique': {
-        name: 'Body Flicker Technique', rank: 'D', type: 'Supplementary', chakraCost: 10, staminaCost: 5, basePower: 0,
+        name: 'Body Flicker Technique', rank: 'D', type: 'Counter', chakraCost: 10, staminaCost: 5, basePower: 0,
         tags: {
+            keywords: ['Reaction-Only'],
             element: 'Non-Elemental', effect: 'Movement', range: 'Short', complexity: 'Simple',
-            validRanges: ['Engaged', 'Short', 'Mid'], 
+            validRanges: ['Engaged', 'Short', 'Long'], 
         },
         effect: { rangeChange: 'Mid' }
     },
     'Fire Style: Ember Jutsu': {
-        name: 'Fire Style: Ember Jutsu', rank: 'D', type: 'Offensive', chakraCost: 15, staminaCost: 0, basePower: 20,
+        name: 'Fire Style: Ember Jutsu', rank: 'D', type: 'Offensive', chakraCost: 25, staminaCost: 0, basePower: 20,
         tags: {
             category: 'Ninjutsu',
             element: 'Fire', effect: 'Projectile', range: 'Short', complexity: 'Moderate',
@@ -793,18 +858,24 @@ export const JUTSU_LIBRARY = {
         }
     },
     'Fire Style: Flame Bullet Jutsu': {
-        name: 'Fire Style: Flame Bullet Jutsu', rank: 'D', type: 'Offensive', chakraCost: 20, staminaCost: 0, basePower: 25,
+        name: 'Fire Style: Flame Bullet Jutsu', rank: 'D', type: 'Offensive', chakraCost: 35, staminaCost: 0, basePower: 25,
         tags: {
             category: 'Ninjutsu',
             element: 'Fire', effect: 'Projectile', range: 'Short', complexity: 'Moderate',
-            validRanges: ['Short', 'Mid'], effect: {
-                rangeChange: null,
-                appliesTag: { name: 'Burning', chance: 0.3, duration: 2 }
+            validRanges: ['Short', 'Mid'], 
+        },
+        effect: {
+            rangeChange: null,
+            appliesTag: { name: 'Burning', duration: 2 },
+            check: {
+                type: 'Contested',
+                attacker: { base: ['skill:NinjutsuFire'], multiplier: 1.0 },
+                defender: { base: ['stat:stamina'], multiplier: 1.0 }
             }
         }
     },
     'Water Style: Rushing Water Jutsu': {
-        name: 'Water Style: Rushing Water Jutsu', rank: 'D', type: 'Offensive', chakraCost: 20, staminaCost: 0, basePower: 18,
+        name: 'Water Style: Rushing Water Jutsu', rank: 'D', type: 'Offensive', chakraCost: 30, staminaCost: 0, basePower: 18,
         tags: {
             category: 'Ninjutsu',
             element: 'Water', effect: 'Projectile', range: 'Short', complexity: 'Moderate',
@@ -816,10 +887,11 @@ export const JUTSU_LIBRARY = {
         tags: {
             category: 'Ninjutsu',
             element: 'Water', effect: 'Obscure', range: 'Short', complexity: 'Simple',
-            validRanges: ['Short', 'Mid'], effect: {
-                rangeChange: null,
-                battlefieldEffect: { name: 'Light Fog', duration: 3 } // Slightly reduces visibility
-            }
+            validRanges: ['Short', 'Mid'],
+        },
+        effect: {
+            rangeChange: null,
+            battlefieldEffect: { name: 'Light Fog', duration: 3 }
         }
     },
     'Wind Style: Gale Palm Jutsu': {
@@ -827,11 +899,12 @@ export const JUTSU_LIBRARY = {
         tags: {
             category: 'Ninjutsu',
             element: 'Wind', effect: 'Push', range: 'Short', complexity: 'Simple',
-            validRanges: ['Engaged', 'Short', 'Mid'], effect: { rangeChange: 'Mid' }
-        }
+            validRanges: ['Engaged', 'Short', 'Mid'], 
+        },
+        effect: { rangeChange: 'Mid' }
     },
     'Wind Style: Wind Cutter Jutsu': {
-        name: 'Wind Style: Wind Cutter Jutsu', rank: 'D', type: 'Offensive', chakraCost: 18, staminaCost: 0, basePower: 22,
+        name: 'Wind Style: Wind Cutter Jutsu', rank: 'D', type: 'Offensive', chakraCost: 38, staminaCost: 0, basePower: 22,
         tags: {
             category: 'Ninjutsu',
             element: 'Wind', effect: 'Projectile', range: 'Short', complexity: 'Moderate',
@@ -839,18 +912,24 @@ export const JUTSU_LIBRARY = {
         }
     },
     'Earth Style: Mud-Shot Jutsu': {
-        name: 'Earth Style: Mud-Shot Jutsu', rank: 'D', type: 'Supplementary', chakraCost: 18, staminaCost: 0, basePower: 10,
+        name: 'Earth Style: Mud-Shot Jutsu', rank: 'D', type: 'Supplementary', chakraCost: 28, staminaCost: 0, basePower: 10,
         tags: {
             category: 'Ninjutsu',
             element: 'Earth', effect: 'Debuff', range: 'Short', complexity: 'Moderate',
-            validRanges: ['Short', 'Mid'], effect: {
-                rangeChange: null,
-                appliesTag: { name: 'Slowed', chance: 0.6, duration: 3, rank: 'C' }
+            validRanges: ['Short', 'Mid'], 
+        },
+        effect: {
+            rangeChange: null,
+            appliesTag: { name: 'Slowed', duration: 3, rank: 'C' },
+            check: {
+                type: 'Contested',
+                attacker: { base: ['stat:intellect', 'skill:NinjutsuEarth'], multiplier: 1.0 },
+                defender: { base: ['stat:agility'], multiplier: 1.0 }
             }
         }
     },
     'Earth Style: Stone Bullet Jutsu': {
-        name: 'Earth Style: Stone Bullet Jutsu', rank: 'D', type: 'Offensive', chakraCost: 20, staminaCost: 0, basePower: 20,
+        name: 'Earth Style: Stone Bullet Jutsu', rank: 'D', type: 'Offensive', chakraCost: 30, staminaCost: 0, basePower: 20,
         tags: {
             category: 'Ninjutsu',
             element: 'Earth', effect: 'Projectile', range: 'Short', complexity: 'Moderate',
@@ -858,7 +937,7 @@ export const JUTSU_LIBRARY = {
         }
     },
     'Lightning Style: Static Spark Jutsu': {
-        name: 'Lightning Style: Static Spark Jutsu', rank: 'D', type: 'Offensive', chakraCost: 25, staminaCost: 0, basePower: 22,
+        name: 'Lightning Style: Static Spark Jutsu', rank: 'D', type: 'Offensive', chakraCost: 35, staminaCost: 0, basePower: 22,
         tags: {
             category: 'Ninjutsu',
             element: 'Lightning', effect: 'FastProjectile', range: 'Short', complexity: 'Moderate',
@@ -866,13 +945,19 @@ export const JUTSU_LIBRARY = {
         }
     },
     'Lightning Style: Shock Wave Jutsu': {
-        name: 'Lightning Style: Shock Wave Jutsu', rank: 'D', type: 'Offensive', chakraCost: 22, staminaCost: 0, basePower: 18,
+        name: 'Lightning Style: Shock Wave Jutsu', rank: 'D', type: 'Offensive', chakraCost: 32, staminaCost: 0, basePower: 18,
         tags: {
             category: 'Ninjutsu',
             element: 'Lightning', effect: 'AoE', range: 'Short', complexity: 'Moderate',
-            validRanges: ['Engaged', 'Short'], effect: {
-                rangeChange: null,
-                appliesTag: { name: 'Stunned', chance: 0.4, duration: 1 }
+            validRanges: ['Engaged', 'Short'], 
+        },
+        effect: {
+            rangeChange: null,
+            appliesTag: { name: 'Stunned', duration: 1 },
+            check: {
+                type: 'Contested',
+                attacker: { base: ['stat:intellect', 'skill:NinjutsuLightning'], multiplier: 1.0 },
+                defender: { base: ['stat:stamina', 'stat:willpower'], multiplier: 1.0 }
             }
         }
     },
@@ -882,16 +967,19 @@ export const JUTSU_LIBRARY = {
             category: 'Genjutsu',
             element: 'Non-Elemental', effect: 'Mental', range: 'Short', complexity: 'Simple',
             keywords: ['Genjutsu'],
-            validRanges: ['Short', 'Mid'], effect: {
-                rangeChange: null,
-                appliesTag: { name: 'Disoriented', chance: 0.7, duration: 2 } // Alters perception of environment
+            validRanges: ['Short', 'Mid'], 
+        },
+        effect: {
+            rangeChange: null,
+            appliesTag: { name: 'Disoriented', duration: 2 },
+            check: {
+                type: 'Contested',
+                attacker: { base: ['stat:intellect', 'skill:Genjutsu'], multiplier: 1.0 },
+                defender: { base: ['stat:willpower', 'stat:perception'], multiplier: 1.0 }
             }
         }
     },
-
-    // --- C-Rank: Chunin Specialties & Battlefield Control ---
-
-        'Shadow Shuriken Jutsu': {
+    'Shadow Shuriken Jutsu': {
         name: 'Shadow Shuriken Jutsu', rank: 'C', type: 'Offensive', chakraCost: 30, staminaCost: 5, basePower: 15,
         requiresItem: { id: 'shuriken' },
         tags: {
@@ -902,8 +990,11 @@ export const JUTSU_LIBRARY = {
         },
         effect: { 
             rangeChange: null,
-            // This jutsu's power comes from its deceptive nature, making it harder to dodge
-            // The core damage is lower, but it hits multiple times and is more accurate.
+            check: { // HIT CHECK
+                type: 'Contested',
+                attacker: { base: ['stat:intellect', 'skill:Shurikenjutsu'], multiplier: 1.1 }, // Deceptive nature makes it harder to dodge
+                defender: { base: ['stat:perception', 'stat:agility'], multiplier: 1.0 }
+            }
         }
     },
     'Fire Style: Great Fireball Jutsu': {
@@ -919,9 +1010,15 @@ export const JUTSU_LIBRARY = {
         tags: {
             category: 'Ninjutsu',
             element: 'Fire', effect: 'MultiProjectile', range: 'Mid', complexity: 'Complex',
-            validRanges: ['Short', 'Mid'], effect: {
-                rangeChange: null,
-                appliesTag: { name: 'Burning', chance: 0.5, duration: 3 }
+            validRanges: ['Short', 'Mid'], 
+        },
+        effect: {
+            rangeChange: null,
+            appliesTag: { name: 'Burning', duration: 3 },
+            check: {
+                type: 'Contested',
+                attacker: { base: ['skill:NinjutsuFire', 'skill:Shurikenjutsu'], multiplier: 1.0 },
+                defender: { base: ['stat:stamina'], multiplier: 1.0 }
             }
         }
     },
@@ -930,10 +1027,11 @@ export const JUTSU_LIBRARY = {
         tags: {
             category: 'Ninjutsu',
             element: 'Fire', effect: 'AoEDebuff', range: 'Mid', complexity: 'Moderate',
-            validRanges: ['Mid'], effect: {
-                rangeChange: null,
-                battlefieldEffect: { name: 'Ash Cloud', duration: 4 } // Reduces visibility and causes minor burns
-            }
+            validRanges: ['Mid'], 
+        },
+        effect: {
+            rangeChange: null,
+            battlefieldEffect: { name: 'Ash Cloud', duration: 4 }
         }
     },
     'Water Style: Water Bullet Jutsu': {
@@ -949,9 +1047,15 @@ export const JUTSU_LIBRARY = {
         tags: {
             category: 'Ninjutsu',
             element: 'Water', effect: 'AoE', range: 'Short', complexity: 'Moderate',
-            validRanges: ['Short', 'Mid'], effect: {
-                rangeChange: null,
-                appliesTag: { name: 'Knocked Back', chance: 0.6, duration: 1 }
+            validRanges: ['Short', 'Mid'], 
+        },
+        effect: {
+            rangeChange: null,
+            appliesTag: { name: 'Knocked Back', duration: 1 },
+            check: {
+                type: 'Contested',
+                attacker: { base: ['skill:NinjutsuWater'], multiplier: 1.1 },
+                defender: { base: ['stat:strength', 'stat:stamina'], multiplier: 1.0 }
             }
         }
     },
@@ -960,10 +1064,11 @@ export const JUTSU_LIBRARY = {
         tags: {
             category: 'Ninjutsu',
             element: 'Water', effect: 'Obscure', range: 'All', complexity: 'Simple',
-            validRanges: ['Short', 'Mid', 'Long'], effect: {
-                rangeChange: null,
-                battlefieldEffect: { name: 'Dense Fog', duration: 5 } // Reduces perception
-            }
+            validRanges: ['Short', 'Mid', 'Long'], 
+        },
+        effect: {
+            rangeChange: null,
+            battlefieldEffect: { name: 'Dense Fog', duration: 5 }
         }
     },
     'Wind Style: Great Breakthrough Jutsu': {
@@ -971,9 +1076,15 @@ export const JUTSU_LIBRARY = {
         tags: {
             category: 'Ninjutsu',
             element: 'Wind', effect: 'AoE', range: 'Mid', complexity: 'Complex',
-            validRanges: ['Mid', 'Long'], effect: {
-                rangeChange: null,
-                appliesTag: { name: 'Pushed', chance: 0.7, duration: 1 }
+            validRanges: ['Mid', 'Long'], 
+        },
+        effect: {
+            rangeChange: 'Long',
+            appliesTag: { name: 'Launched', duration: 1 },
+            check: {
+                type: 'Contested',
+                attacker: { base: ['skill:NinjutsuWind'], multiplier: 1.1 },
+                defender: { base: ['stat:strength', 'stat:stamina'], multiplier: 1.0 }
             }
         }
     },
@@ -990,9 +1101,15 @@ export const JUTSU_LIBRARY = {
         tags: {
             category: 'Ninjutsu',
             element: 'Earth', effect: 'Restraint', range: 'Short', complexity: 'Moderate',
-            validRanges: ['Short', 'Mid'], effect: {
-                rangeChange: null,
-                appliesTag: { name: 'Restrained', chance: 0.7, duration: 2 } // Prevents movement actions
+            validRanges: ['Short', 'Mid'], 
+        },
+        effect: {
+            rangeChange: null,
+            appliesTag: { name: 'Restrained', duration: 6 },
+            check: {
+                type: 'Contested',
+                attacker: { base: ['skill:NinjutsuEarth', 'stat:intellect'], multiplier: 1.2 },
+                defender: { base: ['stat:strength', 'stat:perception'], multiplier: 1.0 }
             }
         }
     },
@@ -1001,10 +1118,11 @@ export const JUTSU_LIBRARY = {
         tags: {
             category: 'Ninjutsu',
             element: 'Earth', effect: 'Barrier', range: 'Personal', complexity: 'Complex',
-            validRanges: ['Short', 'Mid', 'Long'], effect: {
-                rangeChange: null,
-                battlefieldEffect: { name: 'Earthen Wall', duration: 4 } // Provides [Cover]
-            }
+            validRanges: ['Short', 'Mid', 'Long'], 
+        },
+        effect: {
+            rangeChange: null,
+            battlefieldEffect: { name: 'Earthen Wall', duration: 4 }
         }
     },
     'Earth Style: Rock Shelter Jutsu': {
@@ -1012,10 +1130,11 @@ export const JUTSU_LIBRARY = {
         tags: {
             category: 'Ninjutsu',
             element: 'Earth', effect: 'Barrier', range: 'Short', complexity: 'Moderate',
-            validRanges: ['Engaged', 'Short'], effect: {
-                rangeChange: null,
-                battlefieldEffect: { name: 'Rock Dome', duration: 3, rank: 'C' } // Protects from attacks
-            }
+            validRanges: ['Short', 'Mid', 'Long'], 
+        },
+        effect: {
+            rangeChange: null,
+            battlefieldEffect: { name: 'Rock Dome', duration: 6, rank: 'C' }
         }
     },
     'Lightning Style: Lightning Ball Jutsu': {
@@ -1023,9 +1142,15 @@ export const JUTSU_LIBRARY = {
         tags: {
             category: 'Ninjutsu',
             element: 'Lightning', effect: 'Projectile', range: 'Mid', complexity: 'Complex',
-            validRanges: ['Mid', 'Long'], effect: {
-                rangeChange: null,
-                appliesTag: { name: 'Paralyzed', chance: 0.5, duration: 2 }
+            validRanges: ['Mid', 'Long'], 
+        },
+        effect: {
+            rangeChange: null,
+            appliesTag: { name: 'Paralyzed', duration: 2 },
+            check: {
+                type: 'Contested',
+                attacker: { base: ['skill:NinjutsuLightning'], multiplier: 1.0 },
+                defender: { base: ['stat:stamina'], multiplier: 1.0 }
             }
         }
     },
@@ -1034,9 +1159,15 @@ export const JUTSU_LIBRARY = {
         tags: {
             category: 'Ninjutsu',
             element: 'Lightning', effect: 'AoE', range: 'Short', complexity: 'Moderate',
-            validRanges: ['Short'], effect: {
-                rangeChange: null,
-                appliesTag: { name: 'Deafened', chance: 0.6, duration: 3 } // Disorients with sound and shock
+            validRanges: ['Short'], 
+        },
+        effect: {
+            rangeChange: null,
+            appliesTag: { name: 'Deafened', duration: 3 },
+            check: {
+                type: 'Contested',
+                attacker: { base: ['skill:NinjutsuLightning'], multiplier: 1.0 },
+                defender: { base: ['stat:willpower'], multiplier: 1.0 }
             }
         }
     },
@@ -1046,9 +1177,15 @@ export const JUTSU_LIBRARY = {
             category: 'Genjutsu',
             element: 'Non-Elemental', effect: 'Mental', range: 'Mid', complexity: 'Moderate',
             keywords: ['Genjutsu'],
-            validRanges: ['Short', 'Mid'], effect: {
-                rangeChange: null,
-                appliesTag: { name: 'Confused', chance: 0.8, duration: 3 } // Lowers Resolve
+            validRanges: ['Short', 'Mid'], 
+        },
+        effect: {
+            rangeChange: null,
+            appliesTag: { name: 'Confused', duration: 3 },
+            check: {
+                type: 'Contested',
+                attacker: { base: ['stat:intellect', 'skill:Genjutsu'], multiplier: 1.1 },
+                defender: { base: ['stat:willpower', 'stat:intellect'], multiplier: 1.0 }
             }
         }
     },
@@ -1058,9 +1195,15 @@ export const JUTSU_LIBRARY = {
             category: 'Genjutsu',
             element: 'Non-Elemental', effect: 'Mental', range: 'Mid', complexity: 'Complex',
             keywords: ['Genjutsu'],
-            validRanges: ['Mid'], effect: {
-                rangeChange: null,
-                appliesTag: { name: 'Blinded', chance: 0.7, duration: 4 } // Simulates total darkness
+            validRanges: ['Mid'], 
+        },
+        effect: {
+            rangeChange: null,
+            appliesTag: { name: 'Blinded', duration: 4 },
+            check: {
+                type: 'Contested',
+                attacker: { base: ['stat:intellect', 'skill:Genjutsu'], multiplier: 1.1 },
+                defender: { base: ['stat:perception', 'stat:willpower'], multiplier: 1.0 }
             }
         }
     },
@@ -1069,24 +1212,38 @@ export const JUTSU_LIBRARY = {
         tags: {
             category: 'Taijutsu',
             element: 'Non-Elemental', effect: 'Charge', range: 'Short', complexity: 'None',
-            keywords: ['Powerful'],
+            keywords: ['Powerful', 'Innate'],
             validRanges: ['Short', 'Mid']
         },
-            effect: { 
-                rangeChange: 'Engaged',
-                appliesTag: { name: 'Stunned', chance: 0.5, duration: 1 }
+        effect: { 
+            rangeChange: 'Engaged',
+            appliesTag: { name: 'Stunned', duration: 1 },
+            check: { // HIT CHECK
+                type: 'Contested',
+                attacker: { base: ['stat:agility', 'skill:Taijutsu'], multiplier: 1.2 }, // A surprise, fast attack
+                defender: { base: ['stat:perception', 'stat:agility'], multiplier: 1.0 }
+            },
+            secondaryCheck: { // STUN CHECK
+                type: 'Contested',
+                attacker: { base: ['stat:strength', 'skill:Taijutsu'], multiplier: 1.0 },
+                defender: { base: ['stat:stamina'], multiplier: 0.8 }
             }
+        }
     },
-
-    // --- B-Rank: Jonin Tactics & Advanced Elements ---
     'Fire Style: Dragon Flame Jutsu': {
         name: 'Fire Style: Dragon Flame Jutsu', rank: 'B', type: 'Offensive', chakraCost: 80, staminaCost: 0, basePower: 70,
         tags: {
             category: 'Ninjutsu',
             element: 'Fire', effect: 'LineAoE', range: 'Long', complexity: 'High',
-            validRanges: ['Mid', 'Long'], effect: {
-                rangeChange: null,
-                appliesTag: { name: 'Burning', chance: 0.7, duration: 4 }
+            validRanges: ['Mid', 'Long'], 
+        },
+        effect: {
+            rangeChange: null,
+            appliesTag: { name: 'Burning', duration: 4 },
+            check: {
+                type: 'Contested',
+                attacker: { base: ['skill:NinjutsuFire'], multiplier: 1.2 },
+                defender: { base: ['stat:stamina'], multiplier: 1.0 }
             }
         }
     },
@@ -1095,10 +1252,11 @@ export const JUTSU_LIBRARY = {
         tags: {
             category: 'Ninjutsu',
             element: 'Fire', effect: 'AoE', range: 'Mid', complexity: 'High',
-            validRanges: ['Mid'], effect: {
-                rangeChange: null,
-                battlefieldEffect: { name: 'Explosion', duration: 1 } // Causes knockback and damage
-            }
+            validRanges: ['Mid'], 
+        },
+        effect: {
+            rangeChange: 'Mid',
+            battlefieldEffect: { name: 'Explosion', duration: 1 }
         }
     },
     'Water Style: Water Dragon Jutsu': {
@@ -1114,9 +1272,15 @@ export const JUTSU_LIBRARY = {
         tags: {
             category: 'Ninjutsu',
             element: 'Water', effect: 'Restraint', range: 'Short', complexity: 'High',
-            validRanges: ['Engaged', 'Short'], effect: {
-                rangeChange: null,
-                appliesTag: { name: 'Trapped', chance: 0.8, duration: 3 } // Immobilizes target
+            validRanges: ['Engaged', 'Short'], 
+        },
+        effect: {
+            rangeChange: null,
+            appliesTag: { name: 'Trapped', duration: 3 },
+            check: {
+                type: 'Contested',
+                attacker: { base: ['skill:NinjutsuWater', 'stat:chakraPool'], multiplier: 1.2 },
+                defender: { base: ['stat:strength'], multiplier: 1.0 }
             }
         }
     },
@@ -1133,10 +1297,11 @@ export const JUTSU_LIBRARY = {
         tags: {
             category: 'Ninjutsu',
             element: 'Wind', effect: 'Barrier', range: 'Personal', complexity: 'High',
-            validRanges: ['Short', 'Mid'], effect: {
-                rangeChange: null,
-                battlefieldEffect: { name: 'Wind Shield', duration: 4 } // Deflects projectiles
-            }
+            validRanges: ['Short', 'Mid'], 
+        },
+        effect: {
+            rangeChange: null,
+            battlefieldEffect: { name: 'Wind Shield', duration: 4 }
         }
     },
     'Earth Style: Earth Flow River Jutsu': {
@@ -1144,10 +1309,11 @@ export const JUTSU_LIBRARY = {
         tags: {
             category: 'Ninjutsu',
             element: 'Earth', effect: 'TerrainAlter', range: 'Mid', complexity: 'High',
-            validRanges: ['Mid'], effect: {
-                rangeChange: null,
-                battlefieldEffect: { name: 'Mud River', duration: 5 } // Slows movement in area
-            }
+            validRanges: ['Mid'], 
+        },
+        effect: {
+            rangeChange: null,
+            battlefieldEffect: { name: 'Mud River', duration: 5 }
         }
     },
     'Earth Style: Stone Golem Jutsu': {
@@ -1155,10 +1321,11 @@ export const JUTSU_LIBRARY = {
         tags: {
             category: 'Ninjutsu',
             element: 'Earth', effect: 'Summon', range: 'Short', complexity: 'High',
-            validRanges: ['Short'], effect: {
-                rangeChange: null,
-                battlefieldEffect: { name: 'Stone Guardian', duration: 4 } // Creates a defensive ally
-            }
+            validRanges: ['Short'], 
+        },
+        effect: {
+            rangeChange: null,
+            battlefieldEffect: { name: 'Stone Guardian', duration: 4 }
         }
     },
     'Lightning Style: Lightning Hound Jutsu': {
@@ -1166,9 +1333,15 @@ export const JUTSU_LIBRARY = {
         tags: {
             category: 'Ninjutsu',
             element: 'Lightning', effect: 'GuidedProjectile', range: 'Mid', complexity: 'High',
-            validRanges: ['Mid', 'Long'], effect: {
-                rangeChange: null,
-                appliesTag: { name: 'Paralyzed', chance: 0.7, duration: 3 }
+            validRanges: ['Mid', 'Long'], 
+        },
+        effect: {
+            rangeChange: null,
+            appliesTag: { name: 'Paralyzed', duration: 3 },
+            check: {
+                type: 'Contested',
+                attacker: { base: ['skill:NinjutsuLightning', 'stat:intellect'], multiplier: 1.1 },
+                defender: { base: ['stat:stamina'], multiplier: 1.0 }
             }
         }
     },
@@ -1177,10 +1350,11 @@ export const JUTSU_LIBRARY = {
         tags: {
             category: 'Ninjutsu',
             element: 'Lightning', effect: 'Barrier', range: 'Personal', complexity: 'High',
-            validRanges: ['Engaged', 'Short'], effect: {
-                rangeChange: null,
-                battlefieldEffect: { name: 'Electric Field', duration: 3 } // Shocks attackers
-            }
+            validRanges: ['Engaged', 'Short'], 
+        },
+        effect: {
+            rangeChange: null,
+            battlefieldEffect: { name: 'Electric Field', duration: 3 }
         }
     },
     'Genjutsu: Temple of Nirvana': {
@@ -1189,9 +1363,15 @@ export const JUTSU_LIBRARY = {
             category: 'Genjutsu',
             element: 'Non-Elemental', effect: 'MentalAoE', range: 'Mid', complexity: 'High',
             keywords: ['Genjutsu'],
-            validRanges: ['Mid'], effect: {
-                rangeChange: null,
-                appliesTag: { name: 'Asleep', chance: 0.6, duration: 4 } // Induces sleep-like state
+            validRanges: ['Mid'], 
+        },
+        effect: {
+            rangeChange: null,
+            appliesTag: { name: 'Asleep', duration: 4 },
+            check: {
+                type: 'Contested',
+                attacker: { base: ['skill:Genjutsu', 'stat:intellect'], multiplier: 1.2 },
+                defender: { base: ['stat:willpower'], multiplier: 1.0 }
             }
         }
     },
@@ -1200,8 +1380,16 @@ export const JUTSU_LIBRARY = {
         tags: {
             category: 'Taijutsu',
             element: 'Non-Elemental', effect: 'MultiHit', range: 'Melee', complexity: 'Moderate',
-            keywords: ['Combo'],
-            validRanges: ['Engaged'], effect: { rangeChange: null }
+            keywords: ['Combo', 'Innate'],
+            validRanges: ['Engaged'], 
+        },
+        effect: { 
+            rangeChange: null,
+            check: { // HIT CHECK
+                type: 'Contested',
+                attacker: { base: ['stat:agility', 'skill:Taijutsu'], multiplier: 1.1 }, // Fast, combo attack is harder to evade
+                defender: { base: ['stat:agility', 'skill:Taijutsu'], multiplier: 1.0 }
+            }
         }
     },
 };
@@ -1356,6 +1544,225 @@ export const MISSION_PLANS = {
 
 export const MISSIONS = {
     "D-Rank": [
+
+
+                {
+            name: "Recover Stolen Correspondence (D-Rank)",
+            minRank: "Genin",
+            description: "A courier dropped critical letters meant for a noble house. They were picked up by a pickpocket in the Merchant District. Retrieve them discreetly.",
+            durationInDays: [2, 4],
+            baseRyoReward: 600,
+            baseXpReward: { Stealth: 5000 },
+            statChanges: { perception: 3.0 },
+            requiredRoles: ["Leader", "Subordinate", "Subordinate", "Subordinate"],
+            events: [
+                {
+                    type: "SkillCheck",
+                    narrative: "You shadow the pickpocket through winding alleys. He’s cautious, checking over his shoulder often.",
+                    check: { skill: "Stealth", difficulty: 70 },
+                    success: { narrative: "You blend into the shadows, unseen as you close in." },
+                    failure: { narrative: "Your foot kicks loose debris. The thief bolts into a crowded street, complicating the recovery." }
+                },
+                {
+                    type: "FinalEncounter",
+                    narrative: "Cornered in a dead-end, the pickpocket pulls a knife, desperate to keep the letters.",
+                    triggersCombat: { opponents: [{ rank: 'Genin', archetype: 'Assassin' }] }
+                }
+            ]
+        },
+                {
+            name: "Erase Graffiti (D-Rank)",
+            minRank: "Genin",
+            description: "Someone has painted anti-village slogans near the training fields. Officials want it removed quietly before word spreads.",
+            durationInDays: [1, 2],
+            baseRyoReward: 250,
+            baseXpReward: { Teamwork: 2000 },
+            statChanges: { willpower: 3.0 },
+            requiredRoles: ["Leader", "Subordinate", "Subordinate", "Subordinate"],
+            events: [
+                {
+                    type: "SkillCheck",
+                    narrative: "The paint was tar-based, clinging stubbornly to the wall under the hot sun.",
+                    check: { skill: "Willpower", difficulty: 60 },
+                    success: { narrative: "You scrape relentlessly until the words vanish, leaving only faint scars in the stone." },
+                    failure: { narrative: "Your arms ache, and you leave fragments of the slogans visible, risking suspicion." }
+                },
+                {
+                    type: "FinalEncounter",
+                    narrative: "As you finish, a dissenter returns to repaint the wall. He realizes he’s been discovered.",
+                    triggersCombat: { opponents: [{ rank: 'Genin', archetype: 'Brawler' }] }
+                }
+            ]
+        },
+
+                {
+            name: "Deliver Hidden Ledger (D-Rank)",
+            minRank: "Genin",
+            description: "A civilian accountant keeping records of corrupt officials has entrusted you with a ledger. Deliver it to a contact in secret.",
+            durationInDays: [2, 3],
+            baseRyoReward: 700,
+            baseXpReward: { Stealth: 4000 },
+            statChanges: { stamina: 4.0 },
+            requiredRoles: ["Leader", "Subordinate", "Subordinate", "Subordinate"],
+            events: [
+                {
+                    type: "SkillCheck",
+                    narrative: "A suspicious town guard stops you, asking questions about your cargo.",
+                    check: { skill: "Intellect", difficulty: 65 },
+                    success: { narrative: "You spin a plausible lie, and the guard lets you pass." },
+                    failure: { narrative: "Your hesitation makes him suspicious, delaying you and raising the risk of discovery." }
+                },
+                {
+                    type: "FinalEncounter",
+                    narrative: "Moments before delivery, a hired thug intercepts you in an alley, demanding the ledger.",
+                    triggersCombat: { opponents: [{ rank: 'Genin', archetype: 'Brawler' }] }
+                }
+            ]
+        },
+
+                {
+            name: "Repair Collapsed Storage (D-Rank)",
+            minRank: "Genin",
+            description: "A storeroom in the Academy collapsed during training, burying supplies. You’re tasked with salvaging what you can.",
+            durationInDays: [1, 2],
+            baseRyoReward: 400,
+            baseXpReward: { Teamwork: 2500 },
+            statChanges: { strength: 2.5 },
+            requiredRoles: ["Leader", "Subordinate", "Subordinate", "Subordinate"],
+            events: [
+                {
+                    type: "FinalEncounter",
+                    narrative: "As you haul debris, a desperate looter sneaks in to steal the supplies. He won’t leave witnesses.",
+                    triggersCombat: { opponents: [{ rank: 'Genin', archetype: 'Assassin' }] }
+                }
+            ]
+        },
+
+                {
+            name: "Recover Stolen Scroll (D-Rank)",
+            minRank: "Genin",
+            description: "A petty thief has stolen a sealed scroll from a civilian trader. The scroll is minor, but allowing its loss would shame the village.",
+            durationInDays: [2, 4],
+            baseRyoReward: 600,
+            baseXpReward: { Teamwork: 3500, Stealth: 4500 },
+            statChanges: { perception: 3.0 },
+            requiredRoles: ["Leader", "Subordinate", "Subordinate", "Subordinate"],
+            events: [
+                {
+                    type: "SkillCheck",
+                    narrative: "The thief vanishes into the alleyways. The scent of smoke and refuse masks his trail.",
+                    check: { skill: "Perception", difficulty: 65 },
+                    success: { narrative: "You spot faint drag marks where he shoved trash aside, leading deeper into the slums." },
+                    failure: { narrative: "The trail vanishes into the filth. You waste hours circling dead ends, losing precious time." }
+                },
+                {
+                    type: "FinalEncounter",
+                    narrative: "You corner the thief in a derelict house. He grips a kunai, desperate and feral.",
+                    triggersCombat: { opponents: [{ rank: 'Genin', archetype: 'Assassin' }] }
+                }
+            ]
+        },
+
+                {
+            name: "Break Up Smuggler's Deal (D-Rank)",
+            minRank: "Genin",
+            description: "Information suggests a smuggler is trading illegal weaponry in the outer market. Stop the transaction before the goods move further.",
+            durationInDays: [2, 3],
+            baseRyoReward: 700,
+            baseXpReward: { Teamwork: 4000, Stealth: 4000 },
+            statChanges: { intellect: 2.5 },
+            requiredRoles: ["Leader", "Subordinate", "Subordinate", "Subordinate"],
+            events: [
+                {
+                    type: "SkillCheck",
+                    narrative: "A crowded bazaar blocks your view. The smuggler blends with the merchants.",
+                    check: { skill: "Perception", difficulty: 70 },
+                    success: { narrative: "You notice the nervous flicker of his eyes and slip in behind him unseen." },
+                    failure: { narrative: "You lose track of him in the crowd. By the time you catch up, the deal is nearly complete." }
+                },
+                {
+                    type: "FinalEncounter",
+                    narrative: "At the edge of the market, you confront him as he unpacks contraband blades.",
+                    triggersCombat: { opponents: [{ rank: 'Genin', archetype: 'Brawler' }] }
+                }
+            ]
+        },
+
+                {
+            name: "Disrupt Black Market Courier (D-Rank)",
+            minRank: "Genin",
+            description: "A courier known to traffic stolen goods has been spotted moving through the outskirts. Intercept him before delivery.",
+            durationInDays: [1, 3],
+            baseRyoReward: 650,
+            baseXpReward: { Stealth: 5000, Teamwork: 3000 },
+            requiredRoles: ["Leader", "Subordinate", "Subordinate", "Subordinate"],
+            events: [
+                {
+                    type: "SkillCheck",
+                    narrative: "You wait in ambush along a forest path. The courier whistles a tune, but his pace quickens suddenly.",
+                    check: { skill: "Stealth", difficulty: 75 },
+                    success: { narrative: "You hold your breath and strike at the perfect moment, cutting him off." },
+                    failure: { narrative: "You shift too loudly. He notices and bolts, forcing a chase." }
+                },
+                {
+                    type: "FinalEncounter",
+                    narrative: "Trapped at a river crossing, the courier bares steel and prepares to fight.",
+                    triggersCombat: { opponents: [{ rank: 'Genin', archetype: 'Striker' }] }
+                }
+            ]
+        },
+
+                {
+            name: "Recover Missing Shinobi Corpse (D-Rank)",
+            minRank: "Genin",
+            description: "A patrol shinobi never returned. Intelligence suggests bandits dragged the body into the woods. Find and recover it before it is defiled.",
+            durationInDays: [2, 5],
+            baseRyoReward: 1000,
+            baseXpReward: { Teamwork: 3000 },
+            statChanges: { perception: 2.0 },
+            requiredRoles: ["Leader", "Subordinate", "Subordinate", "Subordinate"],
+            events: [
+                {
+                    type: "SkillCheck",
+                    narrative: "The forest reeks of blood and smoke. Tracks fade beneath thick mud.",
+                    check: { skill: "Perception", difficulty: 75 },
+                    success: { narrative: "You spot drag marks and follow them to a hidden clearing." },
+                    failure: { narrative: "The rain washes away the signs. You search blindly." }
+                },
+                {
+                    type: "FinalEncounter",
+                    narrative: "A looter crouches over the fallen shinobi’s gear, stuffing tools into a sack.",
+                    triggersCombat: { opponents: [{ rank: 'Genin', archetype: 'Assassin' }] }
+                }
+            ]
+        },
+
+                {
+            name: "Guard the Execution (D-Rank)",
+            minRank: "Genin",
+            description: "A criminal is to be executed in the square. Ensure no sympathizers interfere with the proceedings.",
+            durationInDays: [1, 2],
+            baseRyoReward: 1100,
+            baseXpReward: { Willpower: 4500 },
+            statChanges: { perception: 3.5 },
+            requiredRoles: ["Leader", "Subordinate", "Subordinate", "Subordinate"],
+            events: [
+                {
+                    type: "SkillCheck",
+                    narrative: "Crowds press close, murmuring unease. A shout erupts nearby.",
+                    check: { skill: "Perception", difficulty: 65 },
+                    success: { narrative: "You spot a cloaked figure slipping through the throng toward the stage." },
+                    failure: { narrative: "The crowd blinds you until steel flashes in the air." }
+                },
+                {
+                    type: "FinalEncounter",
+                    narrative: "A lone assailant leaps forward, attempting to cut the prisoner free.",
+                    triggersCombat: { opponents: [{ rank: 'Genin', archetype: 'Striker' }] }
+                }
+            ]
+        },
+
+
         {
             name: "Find the Daimyo's Lost Cat",
             minRank: "Genin",
@@ -1363,6 +1770,7 @@ export const MISSIONS = {
             durationInDays: [2, 5],
             baseRyoReward: 500,
             baseXpReward: { Teamwork: 3000, Stealth: 5000 },
+            statChanges: { agility: 6.0 },
             requiredRoles: ["Leader", "Subordinate", "Subordinate", "Subordinate"],
             events: [
                 {
@@ -1409,7 +1817,347 @@ export const MISSIONS = {
                     }
                 }
             ]
-        }
+        },
+                            {
+            name: "Deliver Supplies to the Outpost (D-Rank)",
+            minRank: "Genin",
+            description: "A border surveillance outpost needs a fresh delivery of medical supplies and food rations. The journey is short, but the path can be treacherous.",
+            durationInDays: [3, 4],
+            baseRyoReward: 800,
+            baseXpReward: { Teamwork: 4000 },
+            statChanges: {stamina: 5.0 },
+            requiredRoles: ["Leader", "Subordinate", "Subordinate", "Subordinate"],
+            events: [
+                {
+                    type: "SkillCheck",
+                    narrative: "A recent landslide has washed out the main path. A precarious shortcut up a cliff face seems to be the only option.",
+                    check: { skill: "Strength", difficulty: 70 },
+                    success: { narrative: "With coordinated effort, your team safely scales the cliff, securing ropes for the supply packs." },
+                    failure: { narrative: "One of the supply packs slips, tumbling down the cliff and shattering. Some medical supplies are lost." }
+                },
+                {
+                    type: "FinalEncounter",
+                    narrative: "As you approach the outpost, a rogue ninja creeps out and takes his last opportunity to attack!",
+                    triggersCombat: { opponents: [{ rank: 'Genin', archetype: 'random' }] }
+                }
+            ]
+        },
+
+                {
+            name: "Investigate River Contamination (D-Rank)",
+            minRank: "Genin",
+            description: "Farmers downstream have reported their water is strangely discolored. Investigate the upper river and find the source of the contamination.",
+            durationInDays: [2, 4],
+            baseRyoReward: 700,
+            baseXpReward: { Perception: 6000 },
+            statChanges: { intellect: 4.0 },
+            requiredRoles: ["Leader", "Subordinate", "Subordinate", "Subordinate"],
+            events: [
+                 {
+                    type: "SkillCheck",
+                    narrative: "You find strange footprints near the riverbank, partially washed away. It takes a keen eye to decipher them.",
+                    check: { skill: "Perception", difficulty: 80 },
+                    success: { narrative: "You identify the tracks as belonging to a large, bear-like creature, not a human. You follow them upstream." },
+                    failure: { narrative: "The tracks are too faint to read. You're forced to continue your search without a lead, wasting time." }
+                },
+                {
+                    type: "FinalEncounter",
+                    narrative: "You trace the contamination to its source: the carcass of a massive river beast, slain by a poacher who used a fast-acting poison. The poacher is still here, harvesting the beast's valuable pelt!",
+                    triggersCombat: { opponents: [{ rank: 'Genin', archetype: 'Assassin' }] }
+                }
+            ]
+        },
+],
+
+    "C-Rank": [
+
+                {
+            name: "Escort the Informant (C-Rank)",
+            minRank: "Genin",
+            description: "An informant carrying sensitive intelligence must be escorted out of hostile territory without drawing attention.",
+            durationInDays: [4, 6],
+            baseRyoReward: 4500,
+            baseXpReward: { Stealth: 8000, Teamwork: 9000 },
+            requiredRoles: ["Leader", "Striker", "Subordinate", "Subordinate"],
+            events: [
+                {
+                    type: "SkillCheck",
+                    narrative: "Crossing a border checkpoint, guards scrutinize your group closely.",
+                    check: { skill: "Stealth", difficulty: 85 },
+                    success: { narrative: "You pass as weary travelers, the guards none the wiser." },
+                    failure: { narrative: "One guard grows suspicious and tails you." }
+                },
+                {
+                    type: "FinalEncounter",
+                    narrative: "Before reaching safety, a rival shinobi intercepts, intent on killing the informant.",
+                    triggersCombat: { opponents: [{ rank: 'Chunin', archetype: 'Assassin' }] }
+                }
+            ]
+        },
+        {
+            name: "Suppress the Bandit Lieutenant (C-Rank)",
+            minRank: "Genin",
+            description: "A lieutenant of a known bandit clan has been extorting farmers. Neutralize him before the problem escalates.",
+            durationInDays: [3, 5],
+            baseRyoReward: 5000,
+            baseXpReward: { Taijutsu: 10000 },
+            statChanges: { willpower: 9.0 },
+            requiredRoles: ["Leader", "Striker", "Striker", "Subordinate"],
+            events: [
+                {
+                    type: "FinalEncounter",
+                    narrative: "You find the lieutenant drinking in a tavern. When confronted, he snarls and reaches for his blade.",
+                    triggersCombat: { opponents: [{ rank: 'Chunin', archetype: 'Brawler' }] }
+                }
+            ]
+        },
+        {
+            name: "Confirm Rival Outpost (C-Rank)",
+            minRank: "Genin",
+            description: "Reports suggest a rival village has established a covert outpost near the border. Confirm its existence without being caught.",
+            durationInDays: [5, 7],
+            baseRyoReward: 6000,
+            baseXpReward: { Stealth: 12000 },
+            statChanges: { perception: 8.0, intellect: 5.0 },
+            requiredRoles: ["Leader", "Infiltrator", "Infiltrator", "Subordinate"],
+            events: [
+                {
+                    type: "SkillCheck",
+                    narrative: "The perimeter is laced with paper charms designed to hum when touched by chakra.",
+                    check: { skill: "Perception", difficulty: 90 },
+                    success: { narrative: "You detect the faint hum and avoid the traps." },
+                    failure: { narrative: "You brush a tag, releasing a subtle chime. The patrols tighten." }
+                },
+                {
+                    type: "FinalEncounter",
+                    narrative: "At the vantage point, a rival shinobi emerges from the trees, having tracked your approach.",
+                    triggersCombat: { opponents: [{ rank: 'Chunin', archetype: 'Ninjutsu Specialist' }] }
+                }
+            ]
+        },
+
+        {
+            name: "Eliminate Border Spy (C-Rank)",
+            minRank: "Genin",
+            description: "A foreign spy has been gathering information near our border. Track him down and silence him before he escapes.",
+            durationInDays: [4, 6],
+            baseRyoReward: 4500,
+            baseXpReward: { Stealth: 10000, Perception: 8.0 },
+            statChanges: { perception: 8.0 },
+            requiredRoles: ["Leader", "Infiltrator", "Subordinate", "Subordinate"],
+            events: [
+                {
+                    type: "SkillCheck",
+                    narrative: "The spy camps lightly, moving quickly through rough terrain.",
+                    check: { skill: "Perception", difficulty: 85 },
+                    success: { narrative: "You spot the faint fire ash hidden under leaves and catch his trail." },
+                    failure: { narrative: "The wilderness swallows his trail. You nearly lose him." }
+                },
+                {
+                    type: "FinalEncounter",
+                    narrative: "You catch him at the border, scrolls strapped across his back.",
+                    triggersCombat: { opponents: [{ rank: 'Chunin', archetype: 'Assassin' }] }
+                }
+            ]
+        },
+        {
+            name: "Intercept Rogue Shinobi (C-Rank)",
+            minRank: "Genin",
+            description: "A rogue shinobi has been offering his services to mercenaries. Cut him down before he destabilizes the region.",
+            durationInDays: [3, 5],
+            baseRyoReward: 5000,
+            baseXpReward: { Taijutsu: 12000 },
+            statChanges: {  willpower: 7.0 },
+            requiredRoles: ["Leader", "Striker", "Subordinate", "Subordinate"],
+            events: [
+                {
+                    type: "SkillCheck",
+                    narrative: "You find signs of a camp: discarded ration wrappers, boot prints pressed deep.",
+                    check: { skill: "Perception", difficulty: 80 },
+                    success: { narrative: "You move silently closer, confirming his location." },
+                    failure: { narrative: "You stumble on a branch. His eyes snap open, already wary." }
+                },
+                {
+                    type: "FinalEncounter",
+                    narrative: "The rogue grins, kunai in hand. 'They sent children for me?'",
+                    triggersCombat: { opponents: [{ rank: 'Chunin', archetype: 'Brawler' }] }
+                }
+            ]
+        },
+        {
+            name: "Destroy Rebel Camp (C-Rank)",
+            minRank: "Genin",
+            description: "A rebel fighter has been stirring unrest and hiding in the hills. Remove him before his influence grows.",
+            durationInDays: [5, 7],
+            baseRyoReward: 5200,
+            baseXpReward: { Stealth: 10000 },
+            statChanges: { intellect: 7.0 },
+            requiredRoles: ["Leader", "Infiltrator", "Subordinate", "Subordinate"],
+            events: [
+                {
+                    type: "SkillCheck",
+                    narrative: "Smoke from a fire rises, masked by fog. Guards may be nearby.",
+                    check: { skill: "Stealth", difficulty: 90 },
+                    success: { narrative: "You slip past their watch and approach the camp’s heart." },
+                    failure: { narrative: "A twig snaps underfoot. The leader stirs from his tent." }
+                },
+                {
+                    type: "FinalEncounter",
+                    narrative: "The rebel leader, scarred and furious, raises his blade at your intrusion.",
+                    triggersCombat: { opponents: [{ rank: 'Chunin', archetype: 'Striker' }] }
+                }
+            ]
+        },
+        {
+            name: "Purge Hidden Assassin (C-Rank)",
+            minRank: "Genin",
+            description: "Reports claim an assassin has been hiding in the capital’s underbelly. Find him before he strikes again.",
+            durationInDays: [6, 8],
+            baseRyoReward: 6000,
+            baseXpReward: { Stealth: 15000 },
+            statChanges: { perception: 8.0 },
+            requiredRoles: ["Leader", "Infiltrator", "Infiltrator", "Subordinate"],
+            events: [
+                {
+                    type: "SkillCheck",
+                    narrative: "You search tunnels beneath the market. The walls are marked with faint seals.",
+                    check: { skill: "Perception", difficulty: 95 },
+                    success: { narrative: "The seal glows faintly from recent use. You follow it deeper." },
+                    failure: { narrative: "You miss the hidden mark and wander in circles, burning time." }
+                },
+                {
+                    type: "FinalEncounter",
+                    narrative: "The assassin emerges from the shadows, blade already dripping.",
+                    triggersCombat: { opponents: [{ rank: 'Chunin', archetype: 'Assassin' }] }
+                }
+            ]
+        },
+        {
+            name: "Protect Supply Convoy (C-Rank)",
+            minRank: "Genin",
+            description: "A convoy carrying medicine to the border has drawn attention. A hostile operative intends to raid it. Stop him.",
+            durationInDays: [5, 7],
+            baseRyoReward: 7000,
+            baseXpReward: { Teamwork: 12000},
+            statChanges: { perception: 5.0 },
+            requiredRoles: ["Leader", "Subordinate", "Subordinate", "Subordinate"],
+            events: [
+                {
+                    type: "SkillCheck",
+                    narrative: "The convoy creaks along muddy roads. A shadow flickers across the treeline.",
+                    check: { skill: "Perception", difficulty: 85 },
+                    success: { narrative: "You spot him poised to strike, spoiling his ambush." },
+                    failure: { narrative: "You dismiss the flicker until steel arcs from the forest." }
+                },
+                {
+                    type: "FinalEncounter",
+                    narrative: "The attacker drops into the road, mask concealing his features.",
+                    triggersCombat: { opponents: [{ rank: 'Chunin', archetype: 'random' }] }
+                }
+            ]
+        },
+
+        {
+        
+            name: "Assassinate Enemy Captain (C-Rank)",
+            minRank: "Genin",
+            description: "A minor enemy captain has been directing raids near the border. Strike before he escalates.",
+            durationInDays: [4, 6],
+            baseRyoReward: 7500,
+            baseXpReward: { Stealth: 12000, Teamwork: 8000 },
+            requiredRoles: ["Leader", "Infiltrator", "Subordinate", "Subordinate"],
+            events: [
+                {
+                    type: "SkillCheck",
+                    narrative: "You slip into his encampment at night. Guards mutter around a low fire.",
+                    check: { skill: "Stealth", difficulty: 90 },
+                    success: { narrative: "You bypass the guards and approach his tent unseen." },
+                    failure: { narrative: "A lantern flares, casting your shadow across the canvas." }
+                },
+                {
+                    type: "FinalEncounter",
+                    narrative: "The captain awakens with steel in hand, hardened by campaigns.",
+                    triggersCombat: { opponents: [{ rank: 'Chunin', archetype: 'Striker' }] }
+                }
+            ]
+        },
+
+        {
+            name: "Escort the Merchant (C-Rank)",
+            minRank: "Genin",
+            description: "A wealthy merchant needs to be escorted through the dangerous 'Bandit's Pass' to the next town. He is carrying valuable goods.",
+            durationInDays: [4, 7],
+            baseRyoReward: 4000,
+            baseXpReward: { Teamwork: 8000, Perception: 5.0, Taijutsu: 5000 },
+            statChanges: { perception: 5.0},
+            requiredRoles: ["Leader", "Striker", "Subordinate", "Subordinate"],
+            events: [
+                {
+                    type: "SkillCheck",
+                    narrative: "While setting up camp for the night, you notice something glinting in the moonlight on a ridge overlooking your position.",
+                    check: { skill: "Perception", difficulty: 85 },
+                    success: { narrative: "It's a lookout! You spot the bandit scout before he can report your numbers. Your team quietly relocates, avoiding the ambush." },
+                    failure: { narrative: "You dismiss it as a trick of the light. Hours later, your camp is ambushed in the dead of night!", triggersCombat: { opponents: [{ rank: 'Genin', archetype: 'Brawler'}, { rank: 'Genin', archetype: 'Brawler'}, { rank: 'Chunin', archetype: 'Assassin'}]} }
+                },
+                {
+                    type: "FinalEncounter",
+                    narrative: "On the final day, the bandits, frustrated by your vigilance, launch a desperate, full-frontal assault in the narrowest part of the pass!",
+                    triggersCombat: { opponents: [{ rank: 'Chunin', archetype: 'random' }] }
+                }
+            ]
+        },
+
+
+            {
+            name: "Subjugate the Ronin Gang (C-Rank)",
+            minRank: "Genin",
+            description: "A small gang of masterless samurai (ronin) have been terrorizing a local village, demanding food and money. Drive them out.",
+            durationInDays: [3, 5],
+            baseRyoReward: 5000,
+            baseXpReward: { Taijutsu: 12000 },
+            statChanges: { willpower: 9.0 },
+            requiredRoles: ["Leader", "Striker", "Striker", "Subordinate"],
+            events: [
+                {
+                    type: "SkillCheck",
+                    narrative: "The ronin leader attempts to intimidate your team, boasting of his swordsmanship and mocking you as mere children.",
+                    check: { skill: "Willpower", difficulty: 90 },
+                    success: { narrative: "His words have no effect. Your team stands firm, your resolve unshaken. Seeing his taunts fail, he loses his composure." },
+                    failure: { narrative: "His confidence is unsettling. A seed of doubt is planted in your team's mind, making the coming fight harder." }
+                },
+                {
+                    type: "FinalEncounter",
+                    narrative: "Talks have failed. The ronin draw their blades, ready to settle this with steel.",
+                    triggersCombat: { opponents: [{ rank: 'Chunin', archetype: 'random' }] }
+                }
+            ]
+        },
+
+                {
+            name: "Protect the Bridge Builders (C-Rank)",
+            minRank: "Genin",
+            description: "Engineers are constructing a vital bridge, but have been harassed by saboteurs from a rival land. Protect the workers until the bridge is complete.",
+            durationInDays: [7, 12],
+            baseRyoReward: 7500,
+            baseXpReward: { Teamwork: 12000 },
+            requiredRoles: ["Leader", "Subordinate", "Subordinate", "Subordinate"],
+            statChanges: { perception: 10.0, willpower: 9.0 },
+            events: [
+                 {
+                    type: "SkillCheck",
+                    narrative: "A saboteur disguised as a worker attempts to plant explosive tags on the bridge's foundation during the night.",
+                    check: { skill: "Perception", difficulty: 90 },
+                    success: { narrative: "You notice the worker's movements are too precise, too quiet. You apprehend him before he can complete his task.", triggersCombat: { opponents: [{ rank: 'Genin', archetype: 'Assassin'}] } },
+                    failure: { narrative: "The saboteur succeeds! A massive explosion rocks the construction site, setting back progress by days and injuring several workers." }
+                },
+                {
+                    type: "FinalEncounter",
+                    narrative: "Frustrated with your interference, the rival shinobi launch an all-out assault on the bridge to destroy it once and for all!",
+                    triggersCombat: { opponents: [{ rank: 'Chunin', archetype: 'Ninjutsu Specialist' }] }
+                }
+            ]
+        },
+
     ]
 };
 
@@ -1783,7 +2531,7 @@ export const ACADEMY_TAIJUTSU_EVENTS = [
     { name: "Obstacle Course Challenge", message: "You attempt a challenging Academy obstacle course.", outcomes: [ { condition: (char) => (char.currentStats.agility + char.currentStats.stamina) >= 15, result: { narrative: "You clear the course with surprising speed and grace, feeling exhilarated!", statChanges: { agility: 0.2, stamina: 0.1, morale: 5 }, minDelay: 4000, cssClass: "event-message success" } }, { condition: (char) => (char.currentStats.agility + char.currentStats.stamina) >= 10, result: { narrative: "You navigate most of the course effectively, but stumble slightly, getting a minor scrape.", statChanges: { agility: 0.1, stamina: 0.05, health: -5, morale: 1 }, minDelay: 4000, cssClass: "event-message" } }, { condition: (char) => true, result: { narrative: "The course proved too difficult. You end up a bit bruised and disheartened, but determined to build your stamina.", statChanges: { health: -10, stamina: 0.1, morale: -5 }, minDelay: 4000, cssClass: "event-message warning" } } ] },
     { name: "Endurance Run", message: "An instructor leads the class on a grueling run around the village perimeter.", outcomes: [ { condition: (char) => char.currentStats.stamina >= 7, result: { narrative: "You keep a steady pace, finishing the run tired but strong. Your resilience grows.", statChanges: { stamina: 0.2, willpower: 0.1, morale: 3 }, minDelay: 3500, cssClass: "event-message success" } }, { condition: (char) => true, result: { narrative: "You struggle to keep up, finishing near the back of the pack, gasping for air. It's a harsh reminder to improve your conditioning.", statChanges: { stamina: 0.1, morale: -3 }, minDelay: 3500, cssClass: "event-message" } } ] },
     { name: "Kata Practice", message: "You spend hours meticulously practicing basic Taijutsu forms.", outcomes: [ { condition: (char) => char.currentStats.willpower >= 6, result: { narrative: "Your focus is absolute. The repetitive motion becomes a meditation, refining your muscle memory.", xpGain: { group: 'physical', skill: 'Taijutsu', amount: 400 }, statChanges: { strength: 0.05, willpower: 0.05 }, minDelay: 3000, cssClass: "event-message skill-gain-message" } }, { condition: (char) => true, result: { narrative: "Your mind wanders, and your form gets sloppy. The practice feels unproductive.", xpGain: { group: 'physical', skill: 'Taijutsu', amount: 100 }, morale: -2, minDelay: 3000, cssClass: "event-message" } } ] },
-    { name: "Strength Training", message: "Today's exercise is pure physical conditioning: push-ups, squats, and lifting training logs.", outcomes: [ { condition: (char) => char.currentStats.strength >= 6.5, result: { narrative: "You push through the pain, feeling a satisfying burn in your muscles. You are undeniably stronger for it.", statChanges: { strength: 0.8, stamina: 0.25 }, minDelay: 3000, cssClass: "event-message success" } }, { condition: (char) => true, result: { narrative: "The exercises are exhausting. You complete them, but your body aches with the effort.", statChanges: { strength: 0.3, health: -5 }, minDelay: 3000, cssClass: "event-message" } } ] },
+    { name: "Strength Training", message: "Today's exercise is pure physical conditioning: push-ups, squats, and lifting training logs.", outcomes: [ { condition: (char) => char.currentStats.strength >= 6.5, result: { narrative: "You push through the pain, feeling a satisfying burn in your muscles. You are undeniably stronger for it.", statChanges: { strength: 0.4, stamina: 0.25 }, minDelay: 3000, cssClass: "event-message success" } }, { condition: (char) => true, result: { narrative: "The exercises are exhausting. You complete them, but your body aches with the effort.", statChanges: { strength: 0.3, health: -5 }, minDelay: 3000, cssClass: "event-message" } } ] },
     { name: "A Rival's Challenge", message: "A cocky classmate singles you out, eager to prove they're better.", outcomes: [ { condition: (char) => char.currentStats.willpower > char.currentStats.strength, result: { narrative: "Their taunts don't faze you. You calmly defend against their aggressive, sloppy attacks until they tire themselves out.", statChanges: { willpower: 0.2, morale: 5 }, minDelay: 4000, cssClass: "event-message success" } }, { condition: (char) => true, result: { narrative: "Their aggression catches you off guard. They land a solid hit, knocking the wind out of you before an instructor intervenes.", statChanges: { health: -10, morale: -5 }, minDelay: 4000, cssClass: "event-message warning" } } ] },
     { name: "Blindfolded Spar", message: "Your instructor blindfolds you for a sparring session to heighten your senses.", outcomes: [
         { condition: (char) => char.currentStats.perception >= 8, result: { narrative: "You rely on sound and instinct, landing a surprising counterstrike!", xpGain: { group: 'physical', skill: 'Taijutsu', amount: 600 }, statChanges: { perception: 0.15, agility: 0.1, morale: 5 }, minDelay: 4000, cssClass: "event-message success" } },
@@ -1798,7 +2546,7 @@ export const ACADEMY_TAIJUTSU_EVENTS = [
         { condition: (char) => true, result: { narrative: "Your timing is off, disrupting the drill. Your partner glares, but you learn from the mistake.", statChanges: { willpower: 0.05, morale: -2 }, minDelay: 3500, cssClass: "event-message" } }
     ] },
     { name: "Heavy Bag Training", message: "You spend the session pounding a heavy sandbag with strikes.", outcomes: [
-        { condition: (char) => char.currentStats.strength >= 7, result: { narrative: "Your punches dent the bag deeply, your arms burning with effort.", statChanges: { strength: 0.7, stamina: 0.05, morale: 2 }, minDelay: 3000, cssClass: "event-message success" } },
+        { condition: (char) => char.currentStats.strength >= 7, result: { narrative: "Your punches dent the bag deeply, your arms burning with effort.", statChanges: { strength: 0.5, stamina: 0.05, morale: 2 }, minDelay: 3000, cssClass: "event-message success" } },
         { condition: (char) => true, result: { narrative: "Your strikes are weak, barely moving the bag. Your arms ache from the effort.", statChanges: { strength: 0.1, health: -5, morale: -3 }, minDelay: 3000, cssClass: "event-message" } }
     ] },
     { name: "Balance Training", message: "You practice taijutsu stances on a narrow beam.", outcomes: [
@@ -2002,3 +2750,92 @@ export const ADVANCED_JUTSU_RESEARCH_EVENTS = [
 ];
 
 
+// --- NEW: Dynamic Jutsu Discovery Event ---
+
+/**
+ * A special, dynamic event for discovering new jutsu through training.
+ * Its outcome is determined by the context (Sensei or Research) and the character's state.
+ */
+export const JUTSU_DISCOVERY_EVENTS = [
+    {
+        name: "A Glimmer of Insight",
+        // This 'resolve' function makes the event dynamic.
+        resolve: (char, context) => {
+            let potentialJutsu = [];
+            let narrativeContext = "";
+            let rankLimit = 'D'; // Genin start by learning D-Rank
+
+            // 1. Define the context and filter criteria
+            if (context === 'SenseiTeaching') {
+                if (!char.team || !char.team.sensei) return null; // Safety check
+                narrativeContext = `During a break in sparring, ${char.team.sensei.name} notices your potential.`;
+                // Sensei can teach C-Rank if player is skilled
+                if (char.skills.physical.Taijutsu.level > 15 || char.skills.chakra.ChakraControl.level > 15) {
+                    rankLimit = 'C';
+                }
+            } else if (context === 'ScrollResearch') {
+                narrativeContext = "While deciphering a dusty scroll, a complex sequence suddenly makes sense.";
+                 // Research can potentially uncover C-Rank jutsu
+                if (char.skills.academic.NinjutsuTheory.level > 20) {
+                    rankLimit = 'C';
+                }
+            } else {
+                return null; // Invalid context
+            }
+
+            // 2. Filter the JUTSU_LIBRARY to find learnable techniques
+            const academyJutsu = ['Substitution Jutsu', 'Clone Jutsu', 'Transformation Jutsu'];
+
+            for (const jutsuName in JUTSU_LIBRARY) {
+                const jutsu = JUTSU_LIBRARY[jutsuName];
+                const isKnown = !!char.skills.jutsu[jutsuName];
+                const isRankAllowed = (jutsu.rank === 'D' || (jutsu.rank === 'C' && rankLimit === 'C'));
+                
+                // --- MODIFIED LOGIC ---
+                // Skip if it's already known, if it's an innate ability, or if it's a basic academy jutsu
+                if (isKnown || academyJutsu.includes(jutsuName) || jutsu.tags.keywords?.includes('Innate')) {
+                    continue;
+                }
+                
+                if (isRankAllowed) {
+                    if (ELEMENTS.includes(jutsu.tags.element)) {
+                        // For elemental jutsu, character must have discovered the matching affinity
+                        if (char.affinityDiscovered && char.chakraAffinity.elements.includes(jutsu.tags.element)) {
+                            potentialJutsu.push(jutsu);
+                        }
+                    } else {
+                        // Non-elemental jutsu are always potential options
+                        potentialJutsu.push(jutsu);
+                    }
+                }
+            }
+
+            if (potentialJutsu.length === 0) {
+                // No valid jutsu to learn right now. Provide flavor text.
+                if (context === 'SenseiTeaching') {
+                    return { narrative: `${narrativeContext} "You're making good progress," they say, "but you're not ready for the next step. Master your fundamentals first."`, cssClass: "system-message" };
+                } else {
+                    return { narrative: `${narrativeContext} The text is intriguing, but its practical application still eludes you. More study is needed.`, xpGain: { group: 'academic', skill: 'NinjutsuTheory', amount: 500 }, cssClass: "system-message" };
+                }
+            }
+            
+            // 3. Select a random jutsu from the valid pool and build the success outcome
+            const learnedJutsu = potentialJutsu[Math.floor(Math.random() * potentialJutsu.length)];
+            
+            let successNarrative = "";
+            if (context === 'SenseiTeaching') {
+                successNarrative = `${narrativeContext} "Watch closely," they say, before demonstrating the principles of **${learnedJutsu.name}**. You have unlocked a new Jutsu to practice!`;
+            } else { // ScrollResearch
+                successNarrative = `${narrativeContext} The theory clicks into place, revealing the secrets of **${learnedJutsu.name}**. You have unlocked a new Jutsu to practice!`;
+            }
+
+            return {
+                isJutsuDiscovery: true,
+                jutsuNameToUnlock: learnedJutsu.name,
+                narrative: successNarrative,
+                cssClass: "event-message success",
+                moraleChange: 15
+            };
+        }
+    }
+];

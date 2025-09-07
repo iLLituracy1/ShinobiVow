@@ -1,6 +1,6 @@
 // game.js - Core game logic and loop for Shinobi's Vow
 
-import { initializeUI, updateUI, updateTimeControlsUI, addToNarrative, clearActionButtons, showDirectiveOptions, processNarrativeQueue, showVillageMenu } from './ui.js';
+import { initializeUI, updateUI, updateTimeControlsUI, addToNarrative, clearActionButtons, showDirectiveOptions, processNarrativeQueue, showVillageMenu, hideTimeControls, showTimeControls } from './ui.js';
 import { generateNewShinobi, recalculateVitals, getCharacterSkillValue, generateGeninTeam } from './character.js';
 import { initializeSkills, addXp } from './skills.js';
 import { scheduleMilestoneEvent, handleFormativeYearsCycle, handleDowntimeDailyCycle, handleDirectiveTraining } from './events.js';
@@ -437,12 +437,11 @@ async function attemptAcademyExam() {
     const char = gameState.character;
     const time = gameState.time;
     
-    const wasPaused = gameState.time.isPaused;
-    const oldSpeed = gameState.time.gameTimeScale;
     char.lastExamYear = time.year; 
     gameState.time.isPaused = true;
     updateTimeControlsUI();
     clearActionButtons();
+    hideTimeControls(); // <-- HIDE BUTTONS
     const delay = (ms) => new Promise(res => setTimeout(res, ms));
 
     addToNarrative("It is the annual Graduation Exam Day. All eligible students must participate. The instructors call your name. It is time.", "event-message");
@@ -546,10 +545,11 @@ async function attemptAcademyExam() {
     }
 
     updateUI();
-    if (char.currentRank !== "Genin") {
-        gameState.time.isPaused = wasPaused;
-        gameState.time.gameTimeScale = oldSpeed;
-        updateTimeControlsUI();
+    
+    showTimeControls(); // <-- SHOW BUTTONS
+    changeGameSpeed(1);
+
+    if (char.currentRank === "Academy Student") {
         showDirectiveOptions();
     }
 }
@@ -561,6 +561,7 @@ async function triggerTeamAssignmentEvent() {
     gameState.time.isPaused = true;
     updateTimeControlsUI();
     clearActionButtons();
+    hideTimeControls(); // <-- HIDE BUTTONS
     const delay = (ms) => new Promise(res => setTimeout(res, ms));
 
     addToNarrative("A summons arrives from the Kage's tower. Your team assignment is ready.", "event-message");
@@ -575,7 +576,8 @@ async function triggerTeamAssignmentEvent() {
     await delay(5000);
     
     char.currentActivity = "Downtime (Team Training)";
-    gameState.time.isPaused = false;
+    showTimeControls(); // <-- SHOW BUTTONS
+    changeGameSpeed(1); 
     showVillageMenu();
     updateUI();
 }

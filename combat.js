@@ -1,14 +1,55 @@
 // combat.js - Overhauled with Information Warfare mechanics
 
 import { updateUI, addToCombatLog, showVillageMenu } from './ui.js';
-import { JUTSU_LIBRARY, INJURY_POOL, ACTION_NARRATIVES } from './constants.js';
+import { JUTSU_LIBRARY, INJURY_POOL, ACTION_NARRATIVES, ELEMENTS, ELEMENTAL_RELATIONSHIPS } from './constants.js';
 import { checkInventory, removeItemFromInventory } from './inventory.js';
+import { recalculateVitals } from './character.js';
+import { addXp } from './skills.js';
 
 let combatInterval = null;
 
 let combatState = {
     isActive: false, combatants: [], tick: 0, range: 'Short', onCombatEndCallback: null,
 };
+
+/**
+ * Gets a specific skill or stat value from a combatant object.
+ * This is a combat-specific helper that can handle both player and NPC data structures.
+ */
+function getCombatantSkillValue(combatant, skillOrStatName) {
+    // Check stats first
+    if (combatant.source.currentStats && combatant.source.currentStats[skillOrStatName] !== undefined) {
+        return combatant.source.currentStats[skillOrStatName];
+    }
+    // Check player skills
+    if (combatant.isPlayer) {
+        for (const category in combatant.source.skills) {
+            if (combatant.source.skills[category][skillOrStatName]) {
+                return combatant.source.skills[category][skillOrStatName].level;
+            }
+        }
+    } 
+    // Check NPC skills
+    else if (combatant.skillLevels && combatant.skillLevels[skillOrStatName] !== undefined) {
+        return combatant.skillLevels[skillOrStatName];
+    }
+    return 0; // Return 0 if not found
+}
+
+/**
+ * Calculates a total score for a combatant based on a check definition.
+ */
+function calculateCheckScore(combatant, checkDefinition) {
+    if (!checkDefinition || !checkDefinition.base) return 0;
+
+    let totalScore = 0;
+    for (const key of checkDefinition.base) {
+        const [type, name] = key.split(':');
+        totalScore += getCombatantSkillValue(combatant, name);
+    }
+    
+    return totalScore * (checkDefinition.multiplier || 1.0);
+}
 
 // --- Core Combat Functions ---
 
@@ -41,6 +82,7 @@ export function startCombat(opponents, onEndCallback) {
             knownJutsu: isPlayer ? Object.keys(source.skills.jutsu) : oppData.knownJutsu || [],
             skillLevels: isPlayer ? null : oppData.skillLevels || {},
             equipment: isPlayer ? null : oppData.equipment || {},
+            skillUsage: {},
             tempFamiliarity: 0, 
             actionGauge: 0, posture: 'Guarded', tags: [], resolve: 75, aggression: 50, casting: null,
             recentActions: [],
@@ -76,6 +118,19 @@ function getCombatPhase(combatState) {
     if (healthPercent > 0.4 && !highPowerJutsuUsed) return CombatPhases.ESCALATION;
     if (healthPercent > 0.20) return CombatPhases.CLIMAX;
     return CombatPhases.RESOLUTION;
+}
+
+/**
+ * Syncs the vitals from a combatant object back to the main gameState character object if it's the player.
+ * @param {object} combatant - The combatant object from combatState.
+ */
+function updateSourceVitals(combatant) {
+    if (combatant.isPlayer) {
+        const playerChar = gameState.character;
+        playerChar.health = combatant.health;
+        playerChar.chakra = combatant.chakra;
+        playerChar.stamina = combatant.stamina;
+    }
 }
 
 function trackJutsuUsage(combatState, action) {
@@ -176,6 +231,7 @@ function combatLoop() {
     if (!combatState.isActive) return;
     combatState.tick++;
 
+    // --- Battlefield Tag Processing ---
     combatState.battlefield.tags = combatState.battlefield.tags.filter(tag => {
         tag.duration--;
         if (tag.duration <= 0) {
@@ -185,20 +241,7 @@ function combatLoop() {
         return true;
     });
     
-    const disguisedCombatants = combatState.combatants.filter(c => c.tags.some(t => t.name === 'Disguised'));
-    if (disguisedCombatants.length > 0) {
-        for (const disguised of disguisedCombatants) {
-            const opponent = combatState.combatants.find(c => c.id !== disguised.id && c.health > 0);
-            if (opponent) {
-                const detectionChance = 0.05 + (opponent.source.currentStats.perception * 0.001);
-                if (Math.random() < detectionChance) {
-                    addToCombatLog(`**${opponent.name}**'s keen senses spot a flicker in the air, revealing **${disguised.name}**'s disguise!`, 'event-message');
-                    disguised.tags = disguised.tags.filter(t => t.name !== 'Disguised');
-                }
-            }
-        }
-    }
-
+    // --- Combatant Tag & Status Processing ---
     combatState.combatants.forEach(c => {
         c.tags = c.tags.filter(tag => {
             tag.duration--;
@@ -213,8 +256,21 @@ function combatLoop() {
             }
             return true;
         });
+
+        // Disguise check
+        if (c.tags.some(t => t.name === 'Disguised')) {
+            const opponent = combatState.combatants.find(opp => opp.id !== c.id && opp.health > 0);
+            if (opponent) {
+                const detectionChance = 0.05 + (opponent.source.currentStats.perception * 0.001);
+                if (Math.random() < detectionChance) {
+                    addToCombatLog(`**${opponent.name}**'s keen senses spot a flicker in the air, revealing **${c.name}**'s disguise!`, 'event-message');
+                    c.tags = c.tags.filter(t => t.name !== 'Disguised');
+                }
+            }
+        }
     });
 
+    // --- End Condition Check ---
     const player = combatState.combatants.find(c => c.isPlayer);
     const activeOpponents = combatState.combatants.filter(c => !c.isPlayer && c.health > 0);
     if (player.health <= 0 || activeOpponents.length === 0) {
@@ -222,6 +278,7 @@ function combatLoop() {
         return;
     }
 
+    // --- Action Gauge & Casting Processing ---
     let actorFound = false;
     for (const combatant of combatState.combatants) {
         if (combatant.health <= 0) continue;
@@ -236,7 +293,7 @@ function combatLoop() {
             } else {
                 addToCombatLog(`**${combatant.name}** continues preparing their move...`, 'system-message');
             }
-            break;
+            break; 
         }
         const gaugeIncrease = (combatant.source.currentStats?.agility || 30) / 2;
         combatant.actionGauge += gaugeIncrease;
@@ -244,50 +301,58 @@ function combatLoop() {
 
     if (actorFound) return;
     
-    const grappledCombatants = combatState.combatants.filter(c => c.tags.some(t => t.name === 'Grappled'));
+    // --- *** NEW GRAPPLE PREEMPTION LOGIC *** ---
+    const grappledCombatant = combatState.combatants.find(c => c.tags.some(t => t.name === 'Grappled'));
+    if (grappledCombatant) {
+        const grappleTag = grappledCombatant.tags.find(t => t.name === 'Grappled');
+        const grappler = combatState.combatants.find(c => c.id === grappleTag.casterId);
+
+        // If grappler is dead or gone, the grapple breaks automatically
+        if (!grappler || grappler.health <= 0) {
+            grappledCombatant.tags = grappledCombatant.tags.filter(t => t.name !== 'Grappled');
+        } else {
+             // The grappled person gets priority to act if they can
+            if (grappledCombatant.actionGauge >= 100) {
+                grappledCombatant.actionGauge -= 100;
+                executeAction(grappledCombatant, JUTSU_LIBRARY['Attempt to Escape Grapple'], grappler);
+                return; // End this tick, only the grapple escape happens
+            }
+            // If the grappled person can't act, the grappler acts if they can
+            else if (grappler.actionGauge >= 100) {
+                grappler.actionGauge -= 100;
+                const grappleAction = chooseGrappleAction(grappler, grappledCombatant);
+                executeAction(grappler, grappleAction, grappledCombatant);
+                return; // End this tick, only the grapple attack happens
+            }
+        }
+    }
+    // --- *** END NEW LOGIC *** ---
+
+    // --- Standard Turn Logic (if no grapple preemption occurred) ---
     const readyCombatants = combatState.combatants
         .filter(c => 
             c.health > 0 && 
             c.actionGauge >= 100 && 
             !c.casting && 
             !c.tags.some(t => t.name === 'Airborne') &&
-            !grappledCombatants.includes(c)
+            !c.tags.some(t => t.name === 'Grappled') // Grappled combatants are handled above
         )
         .sort((a, b) => b.actionGauge - a.actionGauge);
-
-    if (grappledCombatants.length > 0) {
-        for (const grappled of grappledCombatants) {
-            if(grappled.actionGauge >= 100){
-                grappled.actionGauge -= 100;
-                const opponent = combatState.combatants.find(c => c.id !== grappled.id && c.health > 0);
-                executeAction(grappled, JUTSU_LIBRARY['Attempt to Escape Grapple'], opponent, false);
-                return;
-            }
-        }
-    }
 
     if (readyCombatants.length > 0) {
         const actor = readyCombatants[0];
         actor.actionGauge -= 100;
         const target = actor.isPlayer ? activeOpponents[0] : player;
         const action = chooseAction(actor, target);
-        executeAction(actor, action, target, false);
+        executeAction(actor, action, target);
     }
 }
 
 
 function chooseReaction(target, attacker, incomingAction) {
-    const chakraPercent = target.chakra / target.source.maxChakra;
-    const isThreatening = incomingAction.basePower >= 25 || ['C', 'B', 'A', 'S'].includes(incomingAction.rank);
+    const chakraPercent = target.chakra / target.maxChakra; // Correctly check against maxChakra
 
-    if (isThreatening) {
-        const canSubstitute = getActionIfUsable(target, 'Substitution Jutsu');
-        if (canSubstitute && chakraPercent > 0.20 && Math.random() < 0.70) {
-            addToCombatLog(`Seeing the overwhelming power of the incoming attack, **${target.name}** prepares to substitute!`, 'system-message success');
-            return JUTSU_LIBRARY['Substitution Jutsu'];
-        }
-    }
-
+    // --- Priority 1: Check for smart, elemental defenses first ---
     const effectTag = incomingAction.tags.effect;
     const incomingElement = incomingAction.tags.element;
     const isProjectileOrAoE = (effectTag === 'Projectile' || effectTag === 'AoE' || effectTag === 'MultiProjectile' || effectTag === 'LineAoE');
@@ -298,28 +363,67 @@ function chooseReaction(target, attacker, incomingAction) {
             .filter(jutsu => jutsu && jutsu.type === 'Defensive' && jutsu.name !== 'Guard' && getActionIfUsable(target, jutsu.name));
         
         if (defensiveJutsu.length > 0) {
-            // --- NEW: Elemental Advantage Logic ---
             const advantageousJutsu = defensiveJutsu.find(defJutsu => 
                 ELEMENTAL_RELATIONSHIPS[defJutsu.tags.element] === incomingElement
             );
 
-            // If an elementally advantageous jutsu is found, there is a very high chance of using it.
-            if (advantageousJutsu && Math.random() < 0.95) {
+            // An advantageous counter is almost always the right move if affordable
+            if (advantageousJutsu && chakraPercent > (advantageousJutsu.chakraCost / target.maxChakra + 0.1) && Math.random() < 0.95) {
                 addToCombatLog(`**${target.name}** sees an elemental opening and prepares a perfect counter!`, 'system-message success');
                 return advantageousJutsu;
             }
-            // --- END NEW BLOCK ---
 
-            // Fallback to a random non-advantageous defense
+            // A generic defensive wall is a solid, but less preferred, option
             if (Math.random() < 0.50) {
                 const chosenDefense = defensiveJutsu[Math.floor(Math.random() * defensiveJutsu.length)];
-                addToCombatLog(`**${target.name}** reacts to the incoming jutsu with a defensive technique!`, 'system-message success');
-                return chosenDefense;
+                 if (chakraPercent > (chosenDefense.chakraCost / target.maxChakra + 0.15)) { // Be a bit more cautious with non-optimal walls
+                    addToCombatLog(`**${target.name}** reacts to the incoming jutsu with a defensive technique!`, 'system-message success');
+                    return chosenDefense;
+                }
             }
         }
     }
     
-    return null;
+    // --- Priority 2: Consider Substitution as a last resort for powerful attacks ---
+    const isThreatening = incomingAction.basePower >= 20 || ['D', 'C', 'B', 'A', 'S'].includes(incomingAction.rank);
+    if (isThreatening) {
+        const canSubstitute = getActionIfUsable(target, 'Substitution Jutsu');
+        if (canSubstitute) {
+            const rankChance = { 'D': 0.15, 'C': 0.50, 'B': 0.75, 'A': 0.90, 'S': 1.0 }[incomingAction.rank] || 0.10;
+            
+            // AI is increasingly unwilling to substitute as its chakra drops below 80%
+            const chakraModifier = Math.max(0, (chakraPercent - 0.2) / 0.8);
+            const finalChance = rankChance * chakraModifier;
+
+            if (Math.random() < finalChance) {
+                addToCombatLog(`Seeing the power of the incoming attack, **${target.name}** prepares to substitute!`, 'system-message success');
+                return JUTSU_LIBRARY['Substitution Jutsu'];
+            }
+        }
+    }
+
+    return null; // If no smart reaction is found, take the hit.
+}
+
+/**
+ * A simplified action choice for a combatant who is actively grappling a target.
+ * They should only be focused on attacking or maintaining the grapple.
+ */
+function chooseGrappleAction(attacker, target) {
+    // The ultimate grapple punishment: Kunai Stab.
+    const canUseKunaiStab = getActionIfUsable(attacker, 'Kunai Stab');
+    if (canUseKunaiStab) {
+        return canUseKunaiStab;
+    }
+
+    // If no kunai is available, fall back to a powerful unarmed strike.
+    const canUseHeavyStrike = getActionIfUsable(attacker, 'Heavy Strike');
+    if (canUseHeavyStrike) {
+        return canUseHeavyStrike;
+    }
+    
+    // Default to a basic Strike if nothing else is available.
+    return JUTSU_LIBRARY['Strike'];
 }
 
 function getDesperationBonus(combatant) {
@@ -391,7 +495,7 @@ function chooseAction(combatant, target) {
     
     const phase = getCombatPhase(combatState);
 
-    const innateAbilities = ['Strike', 'Guard', 'Heavy Strike', 'Leaf Whirlwind', 'Create Distance', 'Dash', 'Dynamic Entry', 'Throw Kunai','Throw Shuriken', 'Set Paper Bomb Trap', 'Taijutsu: Takedown', 'Shadow Shuriken Jutsu', 'Analyze', 'Struggle'];
+    const innateAbilities = ['Strike', 'Guard', 'Heavy Strike', 'Leaf Whirlwind', 'Create Distance', 'Dash', 'Dynamic Entry', 'Throw Kunai','Throw Shuriken', 'Set Paper Bomb Trap', 'Taijutsu: Takedown', 'Shadow Shuriken Jutsu', 'Analyze', 'Struggle', 'Kunai Stab'];
     const knownAbilities = new Set([...innateAbilities, ...combatant.knownJutsu]);
     
     const allUsableActions = Array.from(knownAbilities)
@@ -414,24 +518,37 @@ function chooseAction(combatant, target) {
         const desperation = getDesperationBonus(combatant);
         const intellect = combatant.source.currentStats.intellect;
 
+        if (combatant.aiProfile === 'Brawler') {
+            if (action.tags.category === 'Taijutsu') score *= 2.5;
+            else if (action.tags.category === 'Ninjutsu' || action.tags.category === 'Genjutsu') score *= 0.05;
+            else if (action.tags.category === 'Tool') score *= 0.5;
+        } else if (combatant.aiProfile === 'Ninjutsu Specialist') {
+             if (action.tags.category === 'Ninjutsu') score *= 3.0;
+             else if (action.tags.category === 'Taijutsu') score *= 0.2;
+        } else if (combatant.aiProfile === 'Assassin') {
+             if (action.tags.effect === 'Deception' || action.tags.keywords?.includes('Deceptive')) score *= 4.0;
+             if (action.tags.category === 'Tool') score *= 2.0;
+             if (action.type === 'Offensive') score *= 1.5;
+        }
+
+
         if (action.name === 'Analyze') {
-            // --- FIX: Check if analysis has already been performed on this target ---
             if (combatant.tags.some(t => t.name === `Analysis_Complete_${target.id}`)) {
-                score *= 0.01; // Heavily penalize re-analyzing the same target
-            } else {
-                // Only apply the bonus if analysis hasn't been done
-                if (phase === CombatPhases.FEELING_OUT && intellect > 30) {
-                    score *= 8.0;
-                }
+                score *= 0.01; // Heavily penalize re-analyzing
+            } else if (phase === CombatPhases.FEELING_OUT && intellect > 30) {
+                score *= 8.0;
             }
-            // Still apply penalties regardless
             if (desperation.damageMultiplier > 1.0 || (combatant.health / combatant.maxHealth > 0.8)) {
                 score *= 0.1;
             }
         }
+        
+        if (action.name === 'Clone Jutsu' && combatant.tags.some(t => t.name === 'Setup: Clones_Active')) {
+            score *= 0.05; // Heavily penalize using clones when they are already active
+        }
 
         if (target.tags.some(t => t.name === 'Grappled')) {
-            if (action.name === 'Strike' || action.name === 'Heavy Strike') score *= 20.0;
+            if (action.name === 'Strike' || action.name === 'Heavy Strike' || action.name === 'Kunai Stab') score *= 20.0;
         }
 
         const isBrawler = combatant.aiProfile === 'Brawler';
@@ -444,17 +561,10 @@ function chooseAction(combatant, target) {
             if (action.tags.effect === 'Evasion' || action.tags.effect === 'Push') score *= 10.0;
         }
 
-        if (combatant.tags.some(t => t.name === 'Setup: Disguise_Active')) {
-            if (action.type === 'Offensive') score *= 10.0;
+        if (combatant.tags.some(t => t.name === 'Disguised')) {
+            if (action.type === 'Offensive') score *= 10.0; // Heavily incentivize attacking from disguise
         }
-        if (combatant.tags.some(t => t.name === 'Setup: Diversion_Ready')) {
-            const isPowerfulJutsu = (action.rank && ['C', 'B', 'A', 'S'].includes(action.rank));
-            if (isPowerfulJutsu) score *= 8.0;
-        }
-        if (combatant.tags.some(t => t.name === 'Setup: Trap_Ready')) {
-            if (action.tags.effect === 'Taunt' || action.name === 'Create Distance') score *= 5.0;
-        }
-
+        
         if (target.posture === 'Exposed' || target.posture === 'Casting') {
             if (action.type === 'Offensive') score *= (5.0 + (action.basePower / 10));
         } else if (target.posture === 'Guarded') {
@@ -486,13 +596,22 @@ function chooseAction(combatant, target) {
         if (action.chakraCost > combatant.chakra * 0.5) score *= 0.5;
         if (action.type === 'Counter') score *= 0.05;
         if (action.name === 'Guard' && combatant.stamina / combatant.maxStamina > 0.7) score *= 0.01;
-        if (action.tags.effect === 'Deception' && target.posture !== 'Guarded') score *= 0.1;
-        if (action.name === 'Clone Jutsu' && combatant.tags.some(t => t.name === 'Setup: Clones_Active')) score *= 0.05;
 
         return { action, score };
     });
 
     scoredActions.sort((a, b) => b.score - a.score);
+
+    // *** NEW DEBUGGER LOGIC ***
+    if (!combatant.isPlayer) {
+        console.log(`--- ${combatant.name}'s Top Action Candidates (Phase: ${phase}) ---`);
+        for (let i = 0; i < Math.min(5, scoredActions.length); i++) {
+            const { action, score } = scoredActions[i];
+            console.log(`  #${i + 1}: ${action.name} (Score: ${score.toFixed(2)})`);
+        }
+        console.log('------------------------------------');
+    }
+    // *** END NEW DEBUGGER LOGIC ***
     
     const topTierCount = Math.min(scoredActions.length, (Math.random() < 0.7) ? 2 : 3);
     const topTier = scoredActions.slice(0, topTierCount);
@@ -508,6 +627,12 @@ function getActionIfUsable(combatant, actionName) {
     const action = JUTSU_LIBRARY[actionName];
     if (!action) return null;
 
+    const isGrappled = combatant.tags.some(t => t.name === 'Grappled');
+    // NEW LOGIC: Prevent using grapple-specific actions when not grappled.
+    if (action.name === 'Attempt to Escape Grapple' && !isGrappled) {
+        return null;
+    }
+
     if (action.requiresItem) {
         if (combatant.isPlayer) {
             if (!checkInventory(action.requiresItem.id, 1)) return null;
@@ -518,15 +643,14 @@ function getActionIfUsable(combatant, actionName) {
         }
     }
     
-    const isGrappled = combatant.tags.some(t => t.name === 'Grappled');
     if (isGrappled) {
-        const allowedActions = ['Attempt to Escape Grapple', 'Strike'];
+        const allowedActions = ['Attempt to Escape Grapple', 'Strike', 'Kunai Stab'];
         if (!allowedActions.includes(action.name)) {
             return null;
         }
     }
 
-    const innateAbilities = ['Strike', 'Guard', 'Heavy Strike', 'Leaf Whirlwind', 'Create Distance', 'Dash', 'Dynamic Entry', 'Throw Kunai','Throw Shuriken', 'Set Paper Bomb Trap', 'Taijutsu: Takedown', 'Shadow Shuriken Jutsu', 'Attempt to Escape Grapple', 'Analyze', 'Block', 'Dodge'];
+    const innateAbilities = ['Strike', 'Guard', 'Heavy Strike', 'Leaf Whirlwind', 'Create Distance', 'Dash', 'Dynamic Entry', 'Throw Kunai','Throw Shuriken', 'Set Paper Bomb Trap', 'Taijutsu: Takedown', 'Shadow Shuriken Jutsu', 'Attempt to Escape Grapple', 'Analyze', 'Block', 'Dodge', 'Kunai Stab'];
     if (!innateAbilities.includes(actionName)) {
         if (combatant.isPlayer) {
             if (!combatant.source.skills?.jutsu[actionName] || combatant.source.skills.jutsu[actionName].level < 1) return null;
@@ -624,15 +748,13 @@ function resolveTaijutsuReaction(reaction, reactor, attacker, originalAction) {
             actionResult = { hit: false, dodged: true };
             const repositionEffect = reaction.effect?.reposition;
 
-            // --- NEW: Repositioning Logic ---
             if (repositionEffect && Math.random() < repositionEffect.chance) {
                 combatState.range = repositionEffect.newRange;
                 addToCombatLog(`**${reactor.name}** nimbly sidesteps, creating an opening and increasing the distance to **${combatState.range}**!`, "system-message success");
-                reactor.momentum = (reactor.momentum || 0) + 1; // Extra momentum for a great dodge
+                reactor.momentum = (reactor.momentum || 0) + 1;
             } else {
                 addToCombatLog(`**${reactor.name}** successfully evades the attack!`, "system-message success");
             }
-            // --- END NEW BLOCK ---
         } else {
             addToCombatLog(`...but the dodge is too slow! The attack connects!`, "system-message error");
         }
@@ -661,12 +783,42 @@ function resolveTaijutsuReaction(reaction, reactor, attacker, originalAction) {
         addToCombatLog(`It hits **${reactor.name}** for ${finalDamage} damage!`, "system-message error");
     }
 
+    // Sync vitals and update the UI
+    updateSourceVitals(reactor);
+    updateSourceVitals(attacker);
     updateUI();
 }
 
 function executeAction(attacker, action, target, isResolvingCast = false) {
     if (!action) action = JUTSU_LIBRARY['Guard'];
     
+    // --- Skill Usage Tracking ---
+    const incrementSkillUsage = (skillName, amount = 1) => {
+        if (!attacker.skillUsage) attacker.skillUsage = {};
+        attacker.skillUsage[skillName] = (attacker.skillUsage[skillName] || 0) + amount;
+    };
+
+    switch (action.tags.category) {
+        case 'Taijutsu':
+            incrementSkillUsage('Taijutsu');
+            break;
+        case 'Tool':
+            incrementSkillUsage('Shurikenjutsu');
+            break;
+        case 'Ninjutsu':
+            if (action.tags.element && ELEMENTS.includes(action.tags.element)) {
+                incrementSkillUsage(`Ninjutsu${action.tags.element}`);
+                incrementSkillUsage('NatureTransformation', 0.5); // Also train the core skill
+            }
+            incrementSkillUsage('ChakraControl', 0.5); // All ninjutsu uses control
+            break;
+        case 'Genjutsu':
+            incrementSkillUsage('Genjutsu');
+            incrementSkillUsage('ChakraControl', 0.5);
+            break;
+    }
+    // --- End Skill Usage Tracking ---
+
     let actionResult = { hit: false, dodged: false };
 
     const getSkillLevel = (comb, skillName) => {
@@ -703,19 +855,14 @@ function executeAction(attacker, action, target, isResolvingCast = false) {
     if (castTicks > 0) {
         attacker.casting = { action, target, ticksLeft: castTicks };
         attacker.posture = 'Casting';
-
         let castMessage = `**${attacker.name}** begins preparing **${action.name}**!`;
         const category = action.tags.category;
-
-        if (category === 'Ninjutsu' || category === 'Genjutsu') {
-            castMessage = `**${attacker.name}** begins weaving hand seals for **${action.name}**!`;
-        } else if (category === 'Tool') {
-            castMessage = `**${attacker.name}** begins preparing their equipment for **${action.name}**!`;
-        } else if (category === 'Taijutsu') {
-            castMessage = `**${attacker.name}** takes a deep breath, gathering focus for **${action.name}**!`;
-        }
-
+        if (category === 'Ninjutsu' || category === 'Genjutsu') castMessage = `**${attacker.name}** begins weaving hand seals for **${action.name}**!`;
+        else if (category === 'Tool') castMessage = `**${attacker.name}** begins preparing their equipment for **${action.name}**!`;
+        else if (category === 'Taijutsu') castMessage = `**${attacker.name}** takes a deep breath, gathering focus for **${action.name}**!`;
         addToCombatLog(castMessage, "system-message");
+        updateSourceVitals(attacker);
+        if(target) updateSourceVitals(target);
         updateUI();
         return;
     }
@@ -730,11 +877,9 @@ function executeAction(attacker, action, target, isResolvingCast = false) {
     
     if (target) {
         const cloneTag = target.tags.find(t => t.name === 'Setup: Clones_Active');
-        
         const isOffensive = action.type === 'Offensive';
-        const hostileSupplementaryEffects = ['Debuff', 'Restraint', 'Mental'];
+        const hostileSupplementaryEffects = ['Debuff', 'Restraint', 'Mental', 'AoEDebuff'];
         const isHostileSupplementary = action.type === 'Supplementary' && hostileSupplementaryEffects.includes(action.tags.effect);
-        
         const canHitClone = isOffensive || isHostileSupplementary;
 
         if (cloneTag && canHitClone) {
@@ -743,6 +888,8 @@ function executeAction(attacker, action, target, isResolvingCast = false) {
                 addToCombatLog(`${narrativeText} ...but it hits an illusion, which dissipates harmlessly! The real target was elsewhere.`, 'system-message success');
                 cloneTag.duration = Math.max(0, cloneTag.duration - 2);
                 applyMomentumSystem(attacker, target, { hit: false });
+                updateSourceVitals(attacker);
+                updateSourceVitals(target);
                 updateUI();
                 return;
             } else {
@@ -770,29 +917,29 @@ function executeAction(attacker, action, target, isResolvingCast = false) {
         } else {
             addToCombatLog(`...but fails to break **${target.name}**'s hold!`, 'system-message error');
         }
-    } else if (!target || action.tags.range === 'Personal' || action.name === 'Guard' || action.tags.effect === 'Deception') {
+    } else if (!target || action.tags.range === 'Personal' || action.name === 'Guard') {
         if (action.name === 'Guard') {
             attacker.posture = 'Guarded';
             attacker.stamina = Math.min(attacker.maxStamina, attacker.stamina + (attacker.maxStamina * 0.15));
             addToCombatLog(`**${attacker.name}** catches their breath, recovering stamina.`, 'system-message success');
         }
-        if (action.tags.effect === 'Deception') {
-            const check = action.effect.check;
-            const targetCheckValue = target.source.currentStats.perception + target.source.currentStats.intellect;
-            if (targetCheckValue >= check.difficulty) {
-                addToCombatLog(`...but **${target.name}** sees through the illusion!`, 'system-message warning');
-            } else {
-                addToCombatLog(`**${attacker.name}** vanishes from sight!`, 'system-message success');
-                attacker.tags.push({ name: 'Disguised', duration: 4 });
-            }
-        }
         if (action.effect?.appliesTag) {
             attacker.tags.push({ ...action.effect.appliesTag, casterId: attacker.id });
-            if (action.name === 'Clone Jutsu') {
-                addToCombatLog(`Illusory clones of **${attacker.name}** appear on the battlefield!`, 'event-message');
-            }
+            if (action.name === 'Clone Jutsu') addToCombatLog(`Illusory clones of **${attacker.name}** appear on the battlefield!`, 'event-message');
         }
     } else if (target) {
+        if (action.effect?.check?.type === 'Contested' && action.tags.effect === 'Deception') {
+            const attackerScore = calculateCheckScore(attacker, action.effect.check.attacker);
+            const defenderScore = calculateCheckScore(target, action.effect.check.defender);
+            if (attackerScore > defenderScore * (0.8 + Math.random() * 0.4)) {
+                addToCombatLog(`**${attacker.name}** vanishes from sight!`, 'system-message success');
+                attacker.tags.push({ name: 'Disguised', duration: 4 });
+            } else {
+                addToCombatLog(`...but **${target.name}** sees through the illusion!`, 'system-message warning');
+            }
+        }
+        
+        // --- TAIJUTSU REACTION ---
         let taijutsuReaction = null;
         if (action.tags.category === 'Taijutsu' && combatState.range === 'Engaged' && !target.tags.some(t => t.name === 'Grappled')) {
             taijutsuReaction = chooseTaijutsuReaction(target, attacker, action);
@@ -802,45 +949,68 @@ function executeAction(attacker, action, target, isResolvingCast = false) {
             }
         }
 
-        if (chooseCounterReaction(target, attacker, action)) { updateUI(); return; }
+        if (chooseCounterReaction(target, attacker, action)) {
+            updateSourceVitals(attacker);
+            updateSourceVitals(target);
+            updateUI(); 
+            return; 
+        }
         
+        // --- NINJUTSU REACTION (SUBSTITUTION / DEFENSIVE JUTSU) ---
         const reaction = chooseReaction(target, attacker, action);
-        // --- MODIFIED: Elemental Interaction Resolution ---
         if (reaction) {
             const reactionElement = reaction.tags.element;
             const actionElement = action.tags.element;
-            // Check if the reaction is a direct elemental counter to the action
             if (reactionElement && actionElement && ELEMENTAL_RELATIONSHIPS[reactionElement] === actionElement) {
-                // Execute the reaction's costs and narrative, but don't do anything else with it.
                 target.chakra = Math.max(0, target.chakra - (reaction.chakraCost || 0));
                 target.stamina = Math.max(0, target.stamina - (reaction.staminaCost || 0));
                 addToCombatLog(generateNarrativeAction(target, reaction, attacker), "system-message");
-
-                // Log the specific negation message and cancel the original attack completely.
                 addToCombatLog(`The **${reaction.name}** completely negates the **${action.name}**!`, 'event-message');
-                applyMomentumSystem(attacker, target, { hit: false }); // The attack failed.
+                applyMomentumSystem(attacker, target, { hit: false });
+                updateSourceVitals(attacker);
+                updateSourceVitals(target);
                 updateUI();
-                return; // End the turn here.
+                return;
             } else {
-                // If it's not an elemental counter (e.g., Substitution), run the normal reaction logic.
                 executeAction(target, reaction, attacker); 
                 return;
             }
         }
-
-        let evasionChance = (target.source.currentStats.agility - attacker.source.currentStats.perception) * 0.01;
-        if (action.tags.category === 'Taijutsu') evasionChance -= (getSkillLevel(attacker, 'Taijutsu') - getSkillLevel(target, 'Taijutsu')) * 0.005;
-        if (action.tags.category === 'Tool') evasionChance -= (getSkillLevel(attacker, 'Shurikenjutsu') * 0.01);
         
-        if (target.tags.some(t => t.name === 'Grappled')) evasionChance -= 0.5;
+        // --- *** NEW: DEFAULT AGILITY-BASED JUTSU DODGE *** ---
+        // This is the new block. It runs if no special reaction was chosen.
+        let attackConnects = true;
+        if (action.type === 'Offensive' && action.tags.category !== 'Taijutsu') {
+            // Calculate attacker's accuracy score based on the jutsu's defined check
+            const attackerScore = calculateCheckScore(attacker, action.effect.check.attacker);
+            
+            // Calculate defender's evasion score based on agility and perception
+            let defenderScore = getCombatantSkillValue(target, 'agility') + getCombatantSkillValue(target, 'perception') * 0.5;
+            
+            // Apply situational modifiers
+            const effectTag = action.tags.effect;
+            if (effectTag === 'AoE' || effectTag === 'LineAoE') {
+                defenderScore *= 0.6; // 40% penalty to dodge AoE attacks
+            }
+            if (effectTag === 'FastProjectile' || effectTag === 'GuidedProjectile') {
+                defenderScore *= 0.8; // 20% penalty against fast or guided projectiles
+            }
 
-        if (target.posture === 'Mobile' && Math.random() < evasionChance) {
-            let dodgeMessage = `**${target.name}** dodges the jutsu!`;
-            if (action.tags.category === 'Taijutsu') dodgeMessage = `**${target.name}** evades the blow!`;
-            if (action.tags.category === 'Tool') dodgeMessage = `**${target.name}** dodges the projectile!`;
-            addToCombatLog(dodgeMessage, "system-message success");
-            actionResult = { hit: false, dodged: true };
-        } else {
+            const dodged = defenderScore > attackerScore * (0.8 + Math.random() * 0.4);
+
+            if (dodged) {
+                attackConnects = false;
+                actionResult = { hit: false, dodged: true };
+                let dodgeMessage = `With a burst of speed, **${target.name}** dives out of the way of the **${action.name}**!`;
+                if (action.tags.category === 'Tool') dodgeMessage = `**${target.name}** nimbly dodges the incoming projectile!`;
+                addToCombatLog(dodgeMessage, "system-message success");
+            } else {
+                addToCombatLog(`**${target.name}** attempts to evade, but the attack is too fast to dodge completely!`, "system-message error");
+            }
+        }
+        // --- *** END OF NEW DODGE LOGIC *** ---
+        
+        if (attackConnects) { // This now checks if the new dodge mechanic failed
             actionResult.hit = true;
 
             if (target.casting) {
@@ -853,7 +1023,6 @@ function executeAction(attacker, action, target, isResolvingCast = false) {
                 let damageMultiplier = 1.0;
                 let baseDamage = action.basePower;
                 baseDamage *= (1 + (getSkillLevel(attacker, action.name) * 0.02));
-
                 let skillBonus = 0;
                 if (action.tags.category === 'Taijutsu') skillBonus = getSkillLevel(attacker, 'Taijutsu') * 0.2;
                 if (action.tags.category === 'Tool') skillBonus = getSkillLevel(attacker, 'Shurikenjutsu') * 0.25;
@@ -863,7 +1032,6 @@ function executeAction(attacker, action, target, isResolvingCast = false) {
                 }
                 const statBonus = (action.tags.range === 'Melee' ? attacker.source.currentStats.strength * 0.5 : attacker.source.currentStats.intellect * 0.5);
                 let totalDamage = baseDamage + statBonus + skillBonus;
-
                 const disguiseTagIndex = attacker.tags.findIndex(t => t.name === 'Disguised');
                 if (disguiseTagIndex !== -1) {
                     addToCombatLog(`Striking from the shadows, **${attacker.name}** lands a devastating surprise attack!`, 'event-message');
@@ -873,15 +1041,17 @@ function executeAction(attacker, action, target, isResolvingCast = false) {
                      damageMultiplier *= 1.5;
                 }
                 damageMultiplier *= getDesperationBonus(attacker).damageMultiplier;
-                
                 const finalDamage = Math.round(totalDamage * damageMultiplier);
                 target.health = Math.max(0, target.health - finalDamage);
                 addToCombatLog(`It hits **${target.name}** for ${finalDamage} damage!`, "system-message error");
             }
             
-            if (action.effect?.appliesTag) {
-                if (Math.random() < action.effect.appliesTag.chance) {
-                    target.tags.push({ ...action.effect.appliesTag });
+            const secondaryCheck = action.effect?.secondaryCheck || action.effect?.check;
+            if (action.effect?.appliesTag && secondaryCheck?.type === 'Contested') {
+                const attackerScore = calculateCheckScore(attacker, secondaryCheck.attacker);
+                const defenderScore = calculateCheckScore(target, secondaryCheck.defender);
+                if (attackerScore > defenderScore * (0.8 + Math.random() * 0.4)) {
+                    target.tags.push({ ...action.effect.appliesTag, casterId: attacker.id });
                     addToCombatLog(`**${target.name}** is affected by the jutsu and is now **${action.effect.appliesTag.name}**!`, "system-message warning");
                 } else {
                      addToCombatLog(`**${target.name}** resists the jutsu's secondary effect!`, 'system-message success');
@@ -898,6 +1068,8 @@ function executeAction(attacker, action, target, isResolvingCast = false) {
     }
 
     applyMomentumSystem(attacker, target, actionResult);
+    updateSourceVitals(attacker);
+    if(target) updateSourceVitals(target);
     updateUI();
 }
 
@@ -907,18 +1079,63 @@ async function endCombat(victory) {
     combatState.isActive = false;
 
     const playerChar = gameState.character;
+    const playerCombatant = combatState.combatants.find(c => c.isPlayer);
     
     if (victory) {
+        addToCombatLog("You are victorious!", "system-message success");
+
+        // --- CEXP, Stat, and Familiarity Gains ---
+        const prowessScore = combatState.tick;
+        const statGainMultiplier = 0.002;
+        const totalStatGain = prowessScore * statGainMultiplier;
+
+        // 1. Direct Stat Gains
+        if (totalStatGain > 0) {
+            for (const stat in playerChar.baseStats) {
+                playerChar.baseStats[stat] += totalStatGain;
+                playerChar.baseStats[stat] = parseFloat(playerChar.baseStats[stat].toFixed(2));
+            }
+            addToCombatLog(`The crucible of combat has permanently honed your abilities. (All stats +${totalStatGain.toFixed(2)})`, "skill-gain-message");
+            recalculateVitals(); // Recalculate vitals immediately after stat change
+        }
+        
+        // 2. Skill XP Gains based on usage
+        if (playerCombatant && playerCombatant.skillUsage) {
+            const XP_PER_USE_MULTIPLIER = 8;
+            for (const skillName in playerCombatant.skillUsage) {
+                const usageCount = playerCombatant.skillUsage[skillName];
+                const xpToAward = usageCount * XP_PER_USE_MULTIPLIER;
+                
+                let skillFound = false;
+                for (const category in playerChar.skills) {
+                    if (playerChar.skills[category][skillName]) {
+                        const skillObject = playerChar.skills[category][skillName];
+                        if (addXp(skillObject, xpToAward, skillName)) {
+                            // The addXp function already logs level-ups, so we just log the base gain.
+                        }
+                        addToCombatLog(`Your practical application of **${skillName}** has yielded experience. (+${Math.round(xpToAward)} XP)`, "skill-gain-message");
+                        skillFound = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 3. CEXP and Familiarity Gains
         let totalCexpGain = 0;
         const opponentTypesEncountered = new Set();
         combatState.combatants.forEach(c => {
             if (!c.isPlayer) {
-                totalCexpGain += combatState.tick; 
+                totalCexpGain += combatState.tick; // Base CEXP is the length of the fight
                 opponentTypesEncountered.add(c.opponentType);
             }
         });
-        playerChar.combatStats.CEXP += totalCexpGain;
-        addToCombatLog(`Your combat instincts have sharpened. (+${totalCexpGain} CEXP)`, "skill-gain-message");
+        
+        if (totalCexpGain > 0) {
+            playerChar.combatStats.CEXP += totalCexpGain;
+            addToCombatLog(`Your combat instincts have sharpened. (+${totalCexpGain} CEXP)`, "skill-gain-message");
+        }
+
         opponentTypesEncountered.forEach(type => {
             if (type) {
                 if (!playerChar.combatStats.familiarity[type]) playerChar.combatStats.familiarity[type] = 0;
@@ -926,6 +1143,7 @@ async function endCombat(victory) {
                 addToCombatLog(`You've learned more about the tactics of ${type.replace(/_/g, ' ')}. (Familiarity +1)`, "skill-gain-message");
             }
         });
+
     } else {
         const injuryId = 'knocked_unconscious_severe';
         const { applyInjury } = await import('./characterEffects.js');
@@ -933,7 +1151,6 @@ async function endCombat(victory) {
         addToCombatLog("You were defeated and knocked unconscious...", "system-message error");
     }
 
-    const playerCombatant = combatState.combatants.find(c => c.isPlayer);
     if (playerCombatant) {
         playerChar.health = Math.max(0, playerCombatant.health);
         playerChar.chakra = playerCombatant.chakra;

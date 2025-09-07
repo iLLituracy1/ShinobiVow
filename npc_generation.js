@@ -24,10 +24,11 @@ export const ARCHETYPES = {
     'Brawler': {
         statWeights: { strength: 4, agility: 3, stamina: 3, chakraPool: 1, intellect: 1, perception: 2, willpower: 2 },
         primarySkill: 'Taijutsu', 
-        primaryElement: null
+        primaryElement: null,
+        disallowedCategories: ['Ninjutsu', 'Genjutsu'] // Brawlers don't learn these.
     },
     'Ninjutsu Specialist': {
-        statWeights: { strength: 1, agility: 2, stamina: 1, chakraPool: 3, intellect: 3, perception: 2, willpower: 2 },
+        statWeights: { strength: 1, agility: 2, stamina: 1, chakraPool: 4, intellect: 3, perception: 4, willpower: 3 },
         primarySkill: 'Ninjutsu', 
         primaryElement: 'random'
     },
@@ -85,6 +86,13 @@ export function generateShinobi(rank, archetype) {
         let potentialJutsu = Object.keys(JUTSU_LIBRARY).filter(name => {
             const j = JUTSU_LIBRARY[name];
             if (j.rank !== rank) return false;
+            
+            // --- NEW LOGIC: Check for disallowed categories ---
+            if (arch.disallowedCategories && arch.disallowedCategories.includes(j.tags.category)) {
+                return false;
+            }
+            // --- END NEW LOGIC ---
+
             if (isGeneric) return j.tags.element === 'Non-Elemental';
             return j.tags.element === element;
         });
@@ -105,7 +113,6 @@ export function generateShinobi(rank, archetype) {
     
     shinobi.knownJutsu = Array.from(shinobi.knownJutsu);
 
-    // *** Generate Equipment Inventory ***
     shinobi.equipment = {};
     const loadout = NPC_EQUIPMENT_LOADOUTS[rank];
     if (loadout) {
@@ -114,7 +121,6 @@ export function generateShinobi(rank, archetype) {
             shinobi.equipment[itemId] = Math.floor(Math.random() * (max - min + 1)) + min;
         }
     }
-    // *** END NEW BLOCK ***
 
     shinobi.name = `Rogue ${rank} (${archetype})`;
     shinobi.opponentType = `rogue_${rank.toLowerCase()}`;

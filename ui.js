@@ -1,11 +1,19 @@
 // ui.js - UI management for Shinobi's Vow
 
-// *** NOTE: combat.js is not imported here to avoid circular dependencies ***
-// game.js is the central hub.
-
 import { setDirective, handleHospitalTreatment } from './game.js';
 import { addItemToInventory } from './inventory.js';
-import { ITEMS, SHOP_ITEMS } from './constants.js';
+import { ITEMS, SHOP_ITEMS, ELEMENTS } from './constants.js';
+
+/**
+ * Converts simple Markdown-like syntax into HTML for rendering in the log.
+ * @param {string} text - The raw text to format.
+ * @returns {string} - The HTML-formatted text.
+ */
+function formatMessage(text) {
+    if (!text) return '';
+    // Convert **bold** to <strong>bold</strong>
+    return text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+}
 
 /**
  * Helper function to format remaining time in a user-friendly way.
@@ -19,6 +27,85 @@ function formatDuration(minutes) {
     return `${Math.ceil(minutes / 1440)}d`;
 }
 
+/**
+ * Calculates the five core stats for the dossier radar chart.
+ * @param {object} char - The character object.
+ * @returns {object} - An object containing the five calculated stats (TAI, NIN, GEN, TOOL, BLOOD).
+ */
+function calculateRadarStats(char) {
+    if (!char.skills) {
+        return { TAI: 0, NIN: 0, GEN: 0, TOOL: 0, BLOOD: 0 };
+    }
+
+    // TAI: Based on Taijutsu skill and physical stats
+    const tai = char.skills.physical.Taijutsu.level + (char.currentStats.strength + char.currentStats.agility) / 4;
+
+    // NIN: Average of elemental skills, form transformation, and theory
+    const elementalSkills = ELEMENTS.map(el => char.skills.chakra[`Ninjutsu${el}`]?.level || 0);
+    const nin = (elementalSkills.reduce((a, b) => a + b, 0) / (elementalSkills.length || 1)) +
+                (char.skills.chakra.FormTransformation.level / 2) +
+                (char.skills.academic.NinjutsuTheory.level / 3);
+
+    // GEN: Based on Genjutsu skill and mental stats
+    const gen = char.skills.chakra.Genjutsu.level + (char.currentStats.intellect + char.currentStats.willpower) / 4;
+
+    // TOOL: Based on Shurikenjutsu and Perception
+    const tool = char.skills.physical.Shurikenjutsu.level + char.currentStats.perception / 2;
+
+    // BLOOD: Represents innate potential, vitality, and Kekkei Genkai
+    let blood = (char.currentStats.stamina + char.currentStats.chakraPool) / 3;
+    if (char.kekkeiGenkai) {
+        blood += char.kekkeiGenkai.awakened ? 40 : 20;
+    }
+
+    return {
+        TAI: Math.min(100, Math.round(tai)),
+        NIN: Math.min(100, Math.round(nin)),
+        GEN: Math.min(100, Math.round(gen)),
+        TOOL: Math.min(100, Math.round(tool)),
+        BLOOD: Math.min(100, Math.round(blood)),
+    };
+}
+
+/**
+ * Determines a character's speciality based on their highest radar stat.
+ * @param {object} radarStats - The calculated stats from calculateRadarStats.
+ * @returns {string} - The character's combat speciality.
+ */
+function determineSpecialty(radarStats) {
+    if (!radarStats) return 'Undetermined';
+    const stats = Object.entries(radarStats);
+    if (stats.every(s => s[1] < 10)) return 'Novice';
+
+    const [highestStat] = stats.sort((a, b) => b[1] - a[1])[0];
+
+    switch (highestStat) {
+        case 'TAI': return 'Taijutsu Specialist';
+        case 'NIN': return 'Ninjutsu Specialist';
+        case 'GEN': return 'Genjutsu Adept';
+        case 'TOOL': return 'Weapons Master';
+        case 'BLOOD': return 'Clan Prodigy';
+        default: return 'Balanced';
+    }
+}
+
+/**
+ * Counts the number of completed missions of each rank.
+ * @param {Array} missionHistory - The character's mission history array.
+ * @returns {object} - An object with counts for each rank (e.g., { D: 2, C: 1 }).
+ */
+function calculateMissionCounts(missionHistory) {
+    const counts = { S: 0, A: 0, B: 0, C: 0, D: 0 };
+    missionHistory.forEach(mission => {
+        const match = mission.name.match(/\((S|A|B|C|D)-Rank\)/);
+        if (match && mission.outcome === 'Success') {
+            const rank = match[1];
+            counts[rank]++;
+        }
+    });
+    return counts;
+}
+
 export function initializeUI() {
     const ui = gameState.ui;
     // Sidebar Main Info
@@ -26,14 +113,13 @@ export function initializeUI() {
     ui.charAge = document.getElementById('char-age');
     ui.charVillage = document.getElementById('char-village');
     ui.charRank = document.getElementById('char-rank');
-    ui.inventoryPanel = document.getElementById('inventory-panel');
     
     // Header Main Info
     ui.headerCharRank = document.getElementById('header-char-rank');
     ui.headerCharStatus = document.getElementById('header-char-status');
     ui.headerCharActivity = document.getElementById('header-char-activity');
 
-    // Stats, Vitals, Details
+    // Stats
     ui.statStrength = document.getElementById('stat-strength');
     ui.statAgility = document.getElementById('stat-agility');
     ui.statStamina = document.getElementById('stat-stamina');
@@ -41,16 +127,24 @@ export function initializeUI() {
     ui.statIntellect = document.getElementById('stat-intellect');
     ui.statPerception = document.getElementById('stat-perception');
     ui.statWillpower = document.getElementById('stat-willpower');
+    
+    // Vitals and Bars
     ui.charHealth = document.getElementById('char-health');
     ui.charMaxHealth = document.getElementById('char-max-health');
+    ui.healthBar = document.getElementById('health-bar');
     ui.charChakra = document.getElementById('char-chakra');
     ui.charMaxChakra = document.getElementById('char-max-chakra');
+    ui.chakraBar = document.getElementById('chakra-bar');
     ui.charStamina = document.getElementById('char-stamina'); 
     ui.charMaxStamina = document.getElementById('char-max-stamina');
+    ui.staminaBar = document.getElementById('stamina-bar');
+
+    // Details
     ui.charMorale = document.getElementById('char-morale');
     ui.charConditions = document.getElementById('char-conditions');
     ui.charFamilyBackground = document.getElementById('char-family-background');
     ui.charAffinity = document.getElementById('char-affinity');
+    ui.charKekkeiGenkai = document.getElementById('char-kekkei-genkai');
     ui.charTraits = document.getElementById('char-traits');
     ui.aptitudesList = document.getElementById('aptitudes-list');
     ui.charRyo = document.getElementById('char-ryo'); 
@@ -74,6 +168,76 @@ export function initializeUI() {
     ui.pauseResumeButton = document.getElementById('pauseResumeButton');
     ui.timeScaleButtons = Array.from(document.querySelectorAll('.time-buttons .time-control-button[data-speed]'));
 
+    // Dossier Elements
+    ui.dossierPanel = document.getElementById('dossier-panel');
+    ui.dossierVillageCrest = document.getElementById('dossier-village-crest');
+    ui.dossierVillageName = document.getElementById('dossier-village-name');
+    ui.dossierCharName = document.getElementById('dossier-char-name');
+    ui.dossierRank = document.getElementById('dossier-rank');
+    ui.dossierSpeciality = document.getElementById('dossier-speciality');
+    ui.dossierStatus = document.getElementById('dossier-status');
+    ui.dossierSenseiName = document.getElementById('dossier-sensei-name');
+    ui.dossierTeam1Name = document.getElementById('dossier-team1-name');
+    ui.dossierTeam2Name = document.getElementById('dossier-team2-name');
+    ui.dossierMissionsS = document.getElementById('dossier-missions-s');
+    ui.dossierMissionsA = document.getElementById('dossier-missions-a');
+    ui.dossierMissionsB = document.getElementById('dossier-missions-b');
+    ui.dossierMissionsC = document.getElementById('dossier-missions-c');
+    ui.dossierMissionsD = document.getElementById('dossier-missions-d');
+
+    // Chart.js Initialization
+ const ctx = document.getElementById('dossier-radar-chart');
+    if (ctx) {
+        const chartConfig = {
+            type: 'radar',
+            data: {
+                labels: ['TAI', 'NIN', 'TOOL', 'BLOOD', 'GEN'],
+                datasets: [{
+                    label: 'Shinobi Stats',
+                    data: [0, 0, 0, 0, 0],
+                    fill: true,
+                    // --- THE COLOR FIX ---
+                    backgroundColor: 'rgba(185, 107, 107, 0.4)', // Using --dossier-accent
+                    borderColor: 'rgb(185, 107, 107)',
+                    pointBackgroundColor: 'rgb(185, 107, 107)',
+                    // --- END FIX ---
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: 'rgb(185, 107, 107)'
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                scales: {
+                    r: {
+                        angleLines: { color: 'rgba(61, 53, 42, 0.4)' },
+                        grid: { color: 'rgba(61, 53, 42, 0.4)' },
+                        pointLabels: {
+                            color: '#4a3f35',
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            }
+                        },
+                        ticks: {
+                            color: '#8b7e66',
+                            backdropColor: 'rgba(245, 232, 200, 0.75)',
+                            stepSize: 25
+                        },
+                        suggestedMin: 0,
+                        suggestedMax: 100
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        };
+        ui.dossierChart = new Chart(ctx, chartConfig);
+    }
+
     // Tab Logic
     const tabs = document.querySelectorAll('.tab-button');
     const tabContents = document.querySelectorAll('.tab-content');
@@ -86,6 +250,62 @@ export function initializeUI() {
             document.getElementById(tab.dataset.tab).classList.add('active');
         });
     });
+}
+
+/**
+ * Populates the new Dossier tab with character data.
+ */
+function updateDossierTab() {
+    const char = gameState.character;
+    const ui = gameState.ui;
+    if (!ui.dossierPanel) return; // Don't run if not initialized
+
+    // Header
+    if (ui.dossierVillageName) ui.dossierVillageName.textContent = char.village || 'Unknown';
+    if (ui.dossierVillageCrest && char.village) {
+        const village = char.village.toLowerCase();
+        // Simple kanji representation
+        ui.dossierVillageCrest.textContent = village.includes('konoha') ? '葉' : village.includes('suna') ? '砂' : village.includes('iwa') ? '岩' : village.includes('kiri') ? '霧' : village.includes('kumo') ? '雲' : '?';
+    }
+
+    // Main Info
+    if (ui.dossierCharName) ui.dossierCharName.textContent = char.name || 'Shinobi';
+    if (ui.dossierRank) ui.dossierRank.textContent = char.currentRank || 'N/A';
+    if (ui.dossierStatus) ui.dossierStatus.textContent = char.injuries.length > 0 ? 'Injured' : 'Active';
+
+    // Team Info
+    if (char.team) {
+        if(ui.dossierSenseiName) ui.dossierSenseiName.textContent = char.team.sensei.name;
+        if(ui.dossierTeam1Name) ui.dossierTeam1Name.textContent = char.team.teammates[0].name;
+        if(ui.dossierTeam2Name) ui.dossierTeam2Name.textContent = char.team.teammates[1].name;
+    } else {
+        if(ui.dossierSenseiName) ui.dossierSenseiName.textContent = 'N/A';
+        if(ui.dossierTeam1Name) ui.dossierTeam1Name.textContent = 'N/A';
+        if(ui.dossierTeam2Name) ui.dossierTeam2Name.textContent = 'N/A';
+    }
+
+    // Mission Counts
+    const missionCounts = calculateMissionCounts(char.missionHistory);
+    if(ui.dossierMissionsS) ui.dossierMissionsS.textContent = missionCounts.S;
+    if(ui.dossierMissionsA) ui.dossierMissionsA.textContent = missionCounts.A;
+    if(ui.dossierMissionsB) ui.dossierMissionsB.textContent = missionCounts.B;
+    if(ui.dossierMissionsC) ui.dossierMissionsC.textContent = missionCounts.C;
+    if(ui.dossierMissionsD) ui.dossierMissionsD.textContent = missionCounts.D;
+
+    // Radar Chart and Specialty
+    const radarStats = calculateRadarStats(char);
+    if (ui.dossierSpeciality) ui.dossierSpeciality.textContent = determineSpecialty(radarStats);
+
+    if (ui.dossierChart) {
+        ui.dossierChart.data.datasets[0].data = [
+            radarStats.TAI,
+            radarStats.NIN,
+            radarStats.TOOL,
+            radarStats.BLOOD,
+            radarStats.GEN
+        ];
+        ui.dossierChart.update();
+    }
 }
 
 export function updateUI() {
@@ -120,6 +340,24 @@ export function updateUI() {
     if (ui.charMaxStamina) ui.charMaxStamina.textContent = Math.round(char.maxStamina);
     if (ui.charMorale) ui.charMorale.textContent = Math.round(char.morale);
 
+    const healthPercent = char.maxHealth > 0 ? (char.health / char.maxHealth) * 100 : 0;
+    if (ui.healthBar) {
+        ui.healthBar.style.width = `${healthPercent}%`;
+        ui.healthBar.title = `${Math.round(char.health)} / ${Math.round(char.maxHealth)}`;
+    }
+
+    const chakraPercent = char.maxChakra > 0 ? (char.chakra / char.maxChakra) * 100 : 0;
+    if (ui.chakraBar) {
+        ui.chakraBar.style.width = `${chakraPercent}%`;
+        ui.chakraBar.title = `${Math.round(char.chakra)} / ${Math.round(char.maxChakra)}`;
+    }
+
+    const staminaPercent = char.maxStamina > 0 ? (char.stamina / char.maxStamina) * 100 : 0;
+    if (ui.staminaBar) {
+        ui.staminaBar.style.width = `${staminaPercent}%`;
+        ui.staminaBar.title = `${Math.round(char.stamina)} / ${Math.round(char.maxStamina)}`;
+    }
+
     if (ui.charConditions) {
         ui.charConditions.innerHTML = '';
         const allConditions = [...char.injuries, ...char.statusEffects];
@@ -141,7 +379,6 @@ export function updateUI() {
         }
     }
 
-
     if (ui.charFamilyBackground) ui.charFamilyBackground.textContent = char.familyBackground;
     if (ui.charTraits) ui.charTraits.textContent = char.traits.length > 0 ? char.traits.map(t => t.name).join(", ") : "None";
     if (ui.charRyo) ui.charRyo.textContent = char.ryo;
@@ -157,7 +394,6 @@ export function updateUI() {
         }
     }
     
-    // --- NEW: Update Kekkei Genkai Display ---
     if (ui.charKekkeiGenkai) {
         if (char.kekkeiGenkai) {
             const status = char.kekkeiGenkai.awakened ? "Awakened" : "Dormant";
@@ -166,7 +402,6 @@ export function updateUI() {
             ui.charKekkeiGenkai.textContent = "None";
         }
     }
-    // --- END NEW BLOCK ---
     
     // Update Team Roster
     if (ui.teamRosterSection) {
@@ -211,12 +446,15 @@ export function updateUI() {
         updateSkillsUI();
         updateJutsuUI();
         updateInventoryUI();
+        updateDossierTab();
     }
     
     const skillsTab = document.querySelector('.tab-button[data-tab="skills-panel"]');
     if (skillsTab) skillsTab.classList.toggle('disabled', !char.skills);
     const jutsuTab = document.querySelector('.tab-button[data-tab="jutsu-panel"]');
     if (jutsuTab) jutsuTab.classList.toggle('disabled', !char.skills);
+    const dossierTab = document.querySelector('.tab-button[data-tab="dossier-panel"]');
+    if (dossierTab) dossierTab.classList.toggle('disabled', !char.skills);
 }
 
 export function updateTimeControlsUI() {
@@ -228,30 +466,41 @@ export function updateTimeControlsUI() {
     });
 }
 
-// --- NARRATIVE & LOGGING ---
+export function hideTimeControls() {
+    const ui = gameState.ui;
+    if (ui.pauseResumeButton) ui.pauseResumeButton.style.display = 'none';
+    ui.timeScaleButtons.forEach(button => {
+        button.style.display = 'none';
+    });
+}
 
-/**
- * Adds a message to the main narrative queue for the slow-paced game loop.
- */
+export function showTimeControls() {
+    const ui = gameState.ui;
+    if (ui.pauseResumeButton) ui.pauseResumeButton.style.display = 'flex';
+    ui.timeScaleButtons.forEach(button => {
+        button.style.display = 'flex';
+    });
+}
+
 export function addToNarrative(message, cssClass = "game-message", minDelay = 1000) {
     const time = gameState.time;
     const gameTime = { year: time.year, month: time.monthOfYear, day: time.dayOfMonth, hour: time.currentHour, minute: time.currentMinute };
-    gameState.narrativeUpdateQueue.push({ message, cssClass, timestamp: Date.now(), minDelay, gameTime });
+    const formattedMessage = formatMessage(message);
+    gameState.narrativeUpdateQueue.push({ message: formattedMessage, cssClass, timestamp: Date.now(), minDelay, gameTime });
 }
 
-/**
- * Adds a message DIRECTLY to the log, bypassing the queue for real-time combat feedback.
- */
 export function addToCombatLog(message, cssClass = "game-message") {
     const scroll = gameState.ui.narrativeLog;
     if (!scroll) return;
 
     const p = document.createElement('p');
     p.className = cssClass;
-    // Combat log doesn't need a date stamp, it's immediate
-    p.innerHTML = `<span class="timestamp">[COMBAT]</span> ${message}`;
+    
+    const formattedMessage = formatMessage(message);
+    p.innerHTML = `<span class="timestamp">[COMBAT]</span> ${formattedMessage}`;
+    
     scroll.appendChild(p);
-    setTimeout(() => { p.style.opacity = '1'; }, 10); // Quick fade-in
+    setTimeout(() => { p.style.opacity = '1'; }, 10);
     scroll.scrollTop = scroll.scrollHeight;
 }
 
@@ -298,14 +547,6 @@ export function addActionButton(text, onClickFunction, cssClass = "game-button")
     }
 }
 
-// --- CMI UI FUNCTIONS ---
-
-/**
- * Displays the Critical Moment Intervention UI.
- * @param {Array<object>} choices - An array of choice objects { text, action }.
- * @param {number} durationSeconds - The time the player has to choose.
- * @param {Function} onResolve - The callback to execute with the chosen action.
- */
 export function showCMI(choices, durationSeconds, onResolve) {
     clearActionButtons();
     const cmiContainer = gameState.ui.actionButtons;
@@ -318,11 +559,10 @@ export function showCMI(choices, durationSeconds, onResolve) {
 
     const interval = setInterval(() => {
         timeLeft -= 0.1;
-        // Ensure timeLeft doesn't go below zero for display
         timerDisplay.textContent = `ACTION REQUIRED: ${Math.max(0, timeLeft).toFixed(1)}s`;
         if (timeLeft <= 0) {
             clearInterval(interval);
-            onResolve(null, 0); // Timeout, resolve with no action and 0 time left
+            onResolve(null, 0);
         }
     }, 100);
 
@@ -332,17 +572,14 @@ export function showCMI(choices, durationSeconds, onResolve) {
         button.textContent = choice.text;
         button.onclick = () => {
             clearInterval(interval);
-            onResolve(choice.action, timeLeft); // *** MODIFICATION: Pass timeLeft here ***
+            onResolve(choice.action, timeLeft);
         };
         cmiContainer.appendChild(button);
     });
 }
 
-// --- NEWLY MOVED UI MENU FUNCTIONS ---
-
 export function setRestDirective() {
-    // This is now a simple wrapper that calls the game logic function
-    setDirective(null); // Passing null signifies resting
+    setDirective(null);
 }
 
 export function showVillageMenu() {
@@ -351,14 +588,10 @@ export function showVillageMenu() {
     
     addActionButton("Undertake Training", showDirectiveOptions);
     addActionButton("Visit Shinobi Tool Shop", showShopUI);
-    // *** NEW: Add the Hospital button ***
     addActionButton("Visit Village Hospital", showHospitalUI);
     addActionButton("Rest & Recuperate", setRestDirective, "game-button secondary");
 }
 
-/**
- * Displays the Village Hospital UI for treating severe injuries.
- */
 export function showHospitalUI() {
     clearActionButtons();
     const char = gameState.character;
@@ -373,8 +606,8 @@ export function showHospitalUI() {
         
         treatableInjuries.forEach(injury => {
             const remainingDays = Math.ceil(injury.durationInMinutes / 1440);
-            const costRyo = remainingDays * 75; // 75 Ryo per remaining day of healing
-            const timeInDays = Math.ceil(remainingDays / 2); // Treatment takes half the time
+            const costRyo = remainingDays * 75;
+            const timeInDays = Math.ceil(remainingDays / 2);
 
             const button = document.createElement('button');
             button.className = 'game-button';
@@ -402,10 +635,9 @@ export function showShopUI() {
     const char = gameState.character;
     addToNarrative(`You enter the Shinobi Tool Shop. The smell of steel and oil hangs in the air. You have ${char.ryo} Ryo.`, "system-message");
 
-    // *** Iterate over SHOP_ITEMS, not ITEMS ***
     for (const shopItemId in SHOP_ITEMS) {
         const shopItem = SHOP_ITEMS[shopItemId];
-        const baseItemData = ITEMS[shopItem.grants.itemId]; // Get description from base item
+        const baseItemData = ITEMS[shopItem.grants.itemId];
         
         const button = document.createElement('button');
         button.className = 'game-button';
@@ -423,10 +655,9 @@ export function showShopUI() {
         button.addEventListener('click', () => {
             if (char.ryo >= shopItem.cost) {
                 char.ryo -= shopItem.cost;
-                // *** Add the correct item and quantity from the grants object ***
                 addItemToInventory(shopItem.grants.itemId, shopItem.grants.quantity);
                 addToNarrative(`You purchased ${shopItem.name}.`, "skill-gain-message");
-                showShopUI(); // Refresh the shop UI to update Ryo and button states
+                showShopUI();
                 updateUI();
             }
         });
@@ -460,28 +691,22 @@ export function showDirectiveOptions() {
         gameState.ui.actionButtons.appendChild(button);
     };
 
-    // *** RESTRUCTURED LOGIC BLOCK ***
-    // 1. Most specific case: Genin WITH a team
     if (char.currentRank === 'Genin' && char.team) {
         addToNarrative(`Set your downtime training directive. **(Current: ${currentDirectiveText})**`, "system-message");
         addActionButton("Rest & Recuperate", setRestDirective, "game-button secondary");
         
-        // Team-based directives
         addDirectiveButton("Team Sparring", 'SKILL', { skillGroup: 'social', skillName: 'Team Sparring' });
         addDirectiveButton("Formation & Strategy Drills", 'SKILL', { skillGroup: 'social', skillName: 'Formation Drills' });
         addDirectiveButton("Build Bonds with Teammates", 'SKILL', { skillGroup: 'social', skillName: 'Build Bonds' });
         
-        // Specialist directives
         if (char.affinityDiscovered) {
              addDirectiveButton("Elemental Training", 'SKILL', { skillGroup: 'chakra', skillName: 'Elemental Training' });
         }
         addDirectiveButton("Advanced Jutsu Research", 'SKILL', { skillGroup: 'academic', skillName: 'Advanced Jutsu Research' });
         
-        // Links to other menus
         addActionButton("Individual Training", showIndividualTrainingOptions);
         addActionButton("Learn a Specific Jutsu", showJutsuLearningOptions);
 
-    // 2. Broader case: Academy Student OR a solo Genin awaiting a team
     } else if (char.currentRank === 'Academy Student' || (char.currentRank === 'Genin' && !char.team)) {
         if (char.currentRank === 'Genin') {
             addToNarrative(`While awaiting your team assignment, you focus on personal training. **(Current: ${currentDirectiveText})**`, "system-message");
@@ -490,16 +715,13 @@ export function showDirectiveOptions() {
         }
         addActionButton("Rest & Recuperate", setRestDirective, "game-button secondary");
         
-        // Individual-only directives
         addDirectiveButton("Practice Taijutsu", 'SKILL', { skillGroup: 'physical', skillName: 'Practice Taijutsu' });
         addDirectiveButton("Practice Shurikenjutsu", 'SKILL', { skillGroup: 'physical', skillName: 'Practice Shurikenjutsu' });
         addDirectiveButton("Practice Chakra Control", 'SKILL', { skillGroup: 'chakra', skillName: 'Practice Chakra Control' });
         addDirectiveButton("Academic Study", 'SKILL', { skillGroup: 'academic', skillName: 'Academic Study' });
         
-        // Link to Jutsu learning
         addActionButton("Learn a Specific Jutsu", showJutsuLearningOptions);
 
-    // 3. Fallback for all other states (e.g., childhood)
     } else {
         addToNarrative("There are no directives to set at this time. Await further orders.", "system-message");
     }
@@ -550,9 +772,6 @@ export function showJutsuLearningOptions() {
 
     addActionButton("<< Back to Training", showDirectiveOptions, "game-button secondary");
 }
-
-
-// --- EXISTING UI FUNCTIONS ---
 
 function updateSkillsUI() {
     const skillsPanel = document.getElementById('skills-panel');
